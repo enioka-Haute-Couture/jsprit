@@ -20,7 +20,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.graphhopper</groupId>
+    <groupId>com.enioka.hc.jsprit</groupId>
     <artifactId>jsprit</artifactId>
     <version>1.9-SNAPSHOT</version>
 
@@ -168,7 +168,16 @@
     </dependencies>
 
     <distributionManagement>
-
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/enioka-Haute-Couture/jsprit</url>
+        </repository>
+        <snapshotRepository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/enioka-Haute-Couture/jsprit</url>
+        </snapshotRepository>
     </distributionManagement>
 
     <!-- mvn clean deploy -P release -->
