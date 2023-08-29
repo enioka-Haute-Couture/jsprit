@@ -202,10 +202,13 @@ final class ShipmentInsertionCalculator extends AbstractInsertionCalculator {
                         activityContext_.setInsertionIndex(j);
                         insertionContext.setActivityContext(activityContext_);
                         if (!deliveryTimeWindow.isApplicable(insertionContext)) {
-                            continue;
+                            deliverShipment.setTheoreticalEarliestOperationStartTime(0.0);
+                            deliverShipment.setTheoreticalLatestOperationStartTime(Double.MAX_VALUE);
                         }
-                        deliverShipment.setTheoreticalEarliestOperationStartTime(deliveryTimeWindow.getStart());
-                        deliverShipment.setTheoreticalLatestOperationStartTime(deliveryTimeWindow.getEnd());
+                        else {
+                            deliverShipment.setTheoreticalEarliestOperationStartTime(deliveryTimeWindow.getStart());
+                            deliverShipment.setTheoreticalLatestOperationStartTime(deliveryTimeWindow.getEnd());
+                        }
                         ConstraintsStatus deliverShipmentConstraintStatus = fulfilled(insertionContext, prevAct_deliveryLoop, deliverShipment, nextAct_deliveryLoop, prevActEndTime_deliveryLoop, failedActivityConstraints, constraintManager);
                         if (deliverShipmentConstraintStatus.equals(ConstraintsStatus.FULFILLED)) {
                             double additionalDeliveryICosts = softActivityConstraint.getCosts(insertionContext, prevAct_deliveryLoop, deliverShipment, nextAct_deliveryLoop, prevActEndTime_deliveryLoop);
