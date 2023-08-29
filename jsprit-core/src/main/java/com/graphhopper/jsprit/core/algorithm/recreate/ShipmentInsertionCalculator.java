@@ -202,11 +202,13 @@ final class ShipmentInsertionCalculator extends AbstractInsertionCalculator {
             LOGGER.trace("Evaluating pickup at position {}", i);
 
             boolean pickupInsertionNotFulfilledBreak = true;
-            for (TimeWindow pickupTimeWindow : shipment.getPickupTimeWindows()) {
-                pickupShipment.setTheoreticalEarliestOperationStartTime(pickupTimeWindow.getStart());
+            ActivityContext activityContext = new ActivityContext();
+            activityContext.setInsertionIndex(i);
+            insertionContext.setActivityContext(activityContext);
+            for(TimeWindow pickupTimeWindow : shipment.getPickupTimeWindows(insertionContext)) {
                 pickupShipment.setTheoreticalLatestOperationStartTime(pickupTimeWindow.getEnd());
-                pickupActivityContext.setInsertionIndex(i);
-                insertionContext.setActivityContext(pickupActivityContext);
+                pickupShipment.setTheoreticalEarliestOperationStartTime(pickupTimeWindow.getStart());
+
                 ConstraintsStatus pickupShipmentConstraintStatus = fulfilled(insertionContext, prevAct, pickupShipment, nextAct, prevActEndTime, failedActivityConstraints, constraintManager);
                 if (pickupShipmentConstraintStatus.equals(ConstraintsStatus.NOT_FULFILLED)) {
                     pickupInsertionNotFulfilledBreak = false;
@@ -499,7 +501,10 @@ final class ShipmentInsertionCalculator extends AbstractInsertionCalculator {
                     }
 
                     boolean deliveryInsertionNotFulfilledBreak = true;
-                    for (TimeWindow deliveryTimeWindow : shipment.getDeliveryTimeWindows()) {
+                    ActivityContext activityContext_ = new ActivityContext();
+                    activityContext_.setInsertionIndex(j);
+                    insertionContext.setActivityContext(activityContext_);
+                    for (TimeWindow deliveryTimeWindow : shipment.getDeliveryTimeWindows(insertionContext)) {
                         deliverShipment.setTheoreticalEarliestOperationStartTime(deliveryTimeWindow.getStart());
                         deliverShipment.setTheoreticalLatestOperationStartTime(deliveryTimeWindow.getEnd());
                         deliveryActivityContext.setInsertionIndex(j);
