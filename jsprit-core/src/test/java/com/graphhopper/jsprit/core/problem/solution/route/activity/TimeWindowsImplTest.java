@@ -21,6 +21,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.Collection;
+import java.util.Iterator;
 
 /**
  * Created by schroeder on 18/12/15.
@@ -56,5 +60,51 @@ class TimeWindowsImplTest {
             tws.add(TimeWindow.newInstance(50, 100));
             tws.add(TimeWindow.newInstance(50, 100));
         });
+    }
+
+    @Test
+    public void slightlyOverlappingTw_shouldReturnExclusion() {
+        TimeWindowsOverlapImpl tws = new TimeWindowsOverlapImpl();
+        tws.addExcludedTimeWindow(TimeWindow.newInstance(1695461400, 1695488400));
+        tws.addIncludedTimeWindow(TimeWindow.newInstance(1695454200, 1695465300));
+
+        Collection<TimeWindow> res = tws.getTimeWindows(null);
+
+        assertEquals(1, res.size());
+        assertEquals(1695454200, res.iterator().next().getStart(), 1);
+        assertEquals(1695461400, res.iterator().next().getEnd(), 1);
+    }
+
+    @Test
+    public void entirelyExcludedTW_shouldReturnEmptyList() {
+        TimeWindowsOverlapImpl tws = new TimeWindowsOverlapImpl();
+        tws.addExcludedTimeWindow(TimeWindow.newInstance(10, 100));
+        tws.addIncludedTimeWindow(TimeWindow.newInstance(20, 90));
+
+        Collection<TimeWindow> res = tws.getTimeWindows(null);
+
+        assertEquals(0, res.size());
+    }
+
+    @Test
+    public void twoIncludedAndExcludedTW_shouldReturnTwoExclusions() {
+        TimeWindowsOverlapImpl tws = new TimeWindowsOverlapImpl();
+        tws.addExcludedTimeWindow(TimeWindow.newInstance(10, 100));
+        tws.addExcludedTimeWindow(TimeWindow.newInstance(120, 200));
+        tws.addIncludedTimeWindow(TimeWindow.newInstance(0, 90));
+        tws.addIncludedTimeWindow(TimeWindow.newInstance(110, 150));
+
+        Collection<TimeWindow> res = tws.getTimeWindows(null);
+
+        assertEquals(2, res.size());
+        Iterator<TimeWindow> iterator = res.iterator();
+        TimeWindow first = iterator.next();
+        TimeWindow second = iterator.next();
+
+        assertEquals(0, first.getStart(), 1);
+        assertEquals(110, second.getStart(), 1);
+
+        assertEquals(10, first.getEnd(), 1);
+        assertEquals(120, second.getEnd(), 1);
     }
 }
