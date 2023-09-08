@@ -141,13 +141,10 @@ final class ServiceInsertionCalculator extends AbstractInsertionCalculator {
                 activityContext.setInsertionIndex(actIndex);
                 insertionContext.setActivityContext(activityContext);
                 if (!timeWindow.isApplicable(insertionContext)) {
-                    deliveryAct2Insert.setTheoreticalEarliestOperationStartTime(0.0);
-                    deliveryAct2Insert.setTheoreticalLatestOperationStartTime(Double.MAX_VALUE);
+                    timeWindow = defaultTimeWindow;
                 }
-                else {
-                    deliveryAct2Insert.setTheoreticalEarliestOperationStartTime(timeWindow.getStart());
-                    deliveryAct2Insert.setTheoreticalLatestOperationStartTime(timeWindow.getEnd());
-                }
+                deliveryAct2Insert.setTheoreticalEarliestOperationStartTime(timeWindow.getStart());
+                deliveryAct2Insert.setTheoreticalLatestOperationStartTime(timeWindow.getEnd());
 
                 ConstraintsStatus status = fulfilled(insertionContext, prevAct, deliveryAct2Insert, nextAct, prevActStartTime, failedActivityConstraints, constraintManager);
                 if (status.equals(ConstraintsStatus.FULFILLED)) {

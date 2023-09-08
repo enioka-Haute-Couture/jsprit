@@ -145,13 +145,10 @@ final class ShipmentInsertionCalculator extends AbstractInsertionCalculator {
                 activityContext.setInsertionIndex(i);
                 insertionContext.setActivityContext(activityContext);
                 if (!pickupTimeWindow.isApplicable(insertionContext)) {
-                    pickupShipment.setTheoreticalLatestOperationStartTime(0.0);
-                    pickupShipment.setTheoreticalEarliestOperationStartTime(Double.MAX_VALUE);
+                    pickupTimeWindow = defaultTimeWindow;
                 }
-                else {
-                    pickupShipment.setTheoreticalLatestOperationStartTime(pickupTimeWindow.getEnd());
-                    pickupShipment.setTheoreticalEarliestOperationStartTime(pickupTimeWindow.getStart());
-                }
+                pickupShipment.setTheoreticalLatestOperationStartTime(pickupTimeWindow.getEnd());
+                pickupShipment.setTheoreticalEarliestOperationStartTime(pickupTimeWindow.getStart());
 
                 ConstraintsStatus pickupShipmentConstraintStatus = fulfilled(insertionContext, prevAct, pickupShipment, nextAct, prevActEndTime, failedActivityConstraints, constraintManager);
                 if (pickupShipmentConstraintStatus.equals(ConstraintsStatus.NOT_FULFILLED)) {
@@ -202,13 +199,11 @@ final class ShipmentInsertionCalculator extends AbstractInsertionCalculator {
                         activityContext_.setInsertionIndex(j);
                         insertionContext.setActivityContext(activityContext_);
                         if (!deliveryTimeWindow.isApplicable(insertionContext)) {
-                            deliverShipment.setTheoreticalEarliestOperationStartTime(0.0);
-                            deliverShipment.setTheoreticalLatestOperationStartTime(Double.MAX_VALUE);
+                            deliveryTimeWindow = defaultTimeWindow;
                         }
-                        else {
-                            deliverShipment.setTheoreticalEarliestOperationStartTime(deliveryTimeWindow.getStart());
-                            deliverShipment.setTheoreticalLatestOperationStartTime(deliveryTimeWindow.getEnd());
-                        }
+                        deliverShipment.setTheoreticalEarliestOperationStartTime(deliveryTimeWindow.getStart());
+                        deliverShipment.setTheoreticalLatestOperationStartTime(deliveryTimeWindow.getEnd());
+
                         ConstraintsStatus deliverShipmentConstraintStatus = fulfilled(insertionContext, prevAct_deliveryLoop, deliverShipment, nextAct_deliveryLoop, prevActEndTime_deliveryLoop, failedActivityConstraints, constraintManager);
                         if (deliverShipmentConstraintStatus.equals(ConstraintsStatus.FULFILLED)) {
                             double additionalDeliveryICosts = softActivityConstraint.getCosts(insertionContext, prevAct_deliveryLoop, deliverShipment, nextAct_deliveryLoop, prevActEndTime_deliveryLoop);
