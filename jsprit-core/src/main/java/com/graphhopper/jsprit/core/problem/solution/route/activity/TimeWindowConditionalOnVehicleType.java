@@ -31,4 +31,10 @@ public class TimeWindowConditionalOnVehicleType extends TimeWindow {
     public boolean isApplicable(JobInsertionContext insertionContext) {
         return insertionContext.getNewVehicle().getType().getTypeId().equals(vehicleTypeId);
     }
+
+    @Override
+    public boolean isExcluding() {
+        return true;
+    }
+
 }

@@ -20,11 +20,17 @@ package com.graphhopper.jsprit.core.problem.solution.route.activity;
 
 import java.util.Collection;
 
+import com.graphhopper.jsprit.core.problem.misc.JobInsertionContext;
+
 /**
  * Created by schroeder on 20/05/15.
  */
 public interface TimeWindows {
 
+    public void add(TimeWindow timeWindow);
+
     public Collection<TimeWindow> getTimeWindows();
+
+    public Collection<TimeWindow> getTimeWindows(JobInsertionContext insertionContext);
 
 }

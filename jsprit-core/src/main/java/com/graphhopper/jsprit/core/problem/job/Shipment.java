@@ -22,6 +22,7 @@ import com.graphhopper.jsprit.core.problem.Capacity;
 import com.graphhopper.jsprit.core.problem.Location;
 import com.graphhopper.jsprit.core.problem.Skills;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
+import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindows;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindowsImpl;
 
 import java.util.ArrayList;
@@ -76,13 +77,13 @@ public class Shipment extends AbstractJob {
 
         private Location deliveryLocation_;
 
-        protected TimeWindowsImpl deliveryTimeWindows;
+        protected TimeWindows deliveryTimeWindows;
 
         private boolean deliveryTimeWindowAdded = false;
 
         private boolean pickupTimeWindowAdded = false;
 
-        private TimeWindowsImpl pickupTimeWindows;
+        private TimeWindows pickupTimeWindows;
 
         private int priority = 2;
 
@@ -367,9 +368,9 @@ public class Shipment extends AbstractJob {
 
     private final Location deliveryLocation_;
 
-    private final TimeWindowsImpl deliveryTimeWindows;
+    private final TimeWindows deliveryTimeWindows;
 
-    private final TimeWindowsImpl pickupTimeWindows;
+    private final TimeWindows pickupTimeWindows;
 
     private final int priority;
 

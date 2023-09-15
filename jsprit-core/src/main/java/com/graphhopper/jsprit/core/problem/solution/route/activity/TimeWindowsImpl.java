@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 
+import com.graphhopper.jsprit.core.problem.misc.JobInsertionContext;
+
 /**
  * Created by schroeder on 26/05/15.
  */
@@ -29,7 +31,10 @@ public class TimeWindowsImpl implements TimeWindows {
 
     private Collection<TimeWindow> timeWindows = new ArrayList<TimeWindow>();
 
-    public void add(TimeWindow timeWindow){
+    @Override
+    public void add(TimeWindow timeWindow) {
+        // TODO : avoid overlaping for same type of TW ?
+        /*
         for(TimeWindow tw : timeWindows){
             if(timeWindow.getStart() > tw.getStart() && timeWindow.getStart() < tw.getEnd()){
                 throw new IllegalArgumentException("time-windows cannot overlap each other. overlap: " + tw + ", " + timeWindow);
@@ -41,11 +46,54 @@ public class TimeWindowsImpl implements TimeWindows {
                 throw new IllegalArgumentException("time-windows cannot overlap each other. overlap: " + tw + ", " + timeWindow);
             }
         }
+        */
         timeWindows.add(timeWindow);
     }
 
+    @Override
     public Collection<TimeWindow> getTimeWindows() {
         return Collections.unmodifiableCollection(timeWindows);
+    }
+
+    @Override
+    public Collection<TimeWindow> getTimeWindows(JobInsertionContext insertionContext) {
+        // Reorder by start time
+        ArrayList<TimeWindow> twList = new ArrayList<TimeWindow>(timeWindows);
+        Collections.sort(twList);
+
+        ArrayList<TimeWindow> result = new ArrayList<TimeWindow>();
+        int startIdx = 1;
+        boolean hasExcludingTW = false;
+        boolean hasNonExcludingTW = false;
+        for (TimeWindow timeWindow : twList) {
+            if (!timeWindow.isApplicable(insertionContext)) {
+                continue;
+            }
+            for (int i = startIdx; i < twList.size(); i++) {
+                if (!timeWindow.isApplicable(insertionContext) || timeWindow == twList.get(i)) {
+                    continue;
+                }
+
+                // Check if overlap
+                if (twList.get(i).getStart() < timeWindow.getEnd()) {
+                    // Which TW intersect
+                    result.add(TimeWindow.newInstance(
+                            timeWindow.isExcluding() ? timeWindow.getStart() : twList.get(i).getStart(),
+                            timeWindow.isExcluding() ? timeWindow.getEnd() : twList.get(i).getEnd()));
+                }
+            }
+            startIdx++;
+            hasExcludingTW |= timeWindow.isExcluding();
+            hasNonExcludingTW |= !timeWindow.isExcluding();
+        }
+        if (result.isEmpty()) {
+            if (hasExcludingTW ^ hasNonExcludingTW) {
+                return twList;
+            } else {
+                result.add(TimeWindow.newInstance(0.0, Double.MAX_VALUE));
+            }
+        }
+        return result;
     }
 
     @Override

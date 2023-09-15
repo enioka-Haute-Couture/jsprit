@@ -21,6 +21,7 @@ import com.graphhopper.jsprit.core.problem.AbstractJob;
 import com.graphhopper.jsprit.core.problem.Capacity;
 import com.graphhopper.jsprit.core.problem.Location;
 import com.graphhopper.jsprit.core.problem.Skills;
+import com.graphhopper.jsprit.core.problem.misc.JobInsertionContext;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindows;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindowsImpl;
@@ -87,7 +88,7 @@ public class Service extends AbstractJob {
 
         protected Location location;
 
-        protected TimeWindowsImpl timeWindows;
+        protected TimeWindows timeWindows;
 
         private boolean twAdded = false;
 
@@ -308,6 +309,10 @@ public class Service extends AbstractJob {
 
     public Collection<TimeWindow> getTimeWindows(){
         return timeWindows.getTimeWindows();
+    }
+
+    public Collection<TimeWindow> getTimeWindows(JobInsertionContext insertionContext){
+        return timeWindows.getTimeWindows(insertionContext);
     }
 
     @Override
