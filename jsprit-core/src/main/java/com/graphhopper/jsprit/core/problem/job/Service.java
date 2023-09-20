@@ -25,6 +25,7 @@ import com.graphhopper.jsprit.core.problem.misc.JobInsertionContext;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindows;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindowsImpl;
+import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindowsOverlapImpl;
 import com.graphhopper.jsprit.core.util.Coordinate;
 
 import java.util.ArrayList;
@@ -173,13 +174,15 @@ public class Service extends AbstractJob {
          * @throws IllegalArgumentException if dimensionValue < 0
          */
         public Builder<T> addSizeDimension(int dimensionIndex, int dimensionValue) {
-            if (dimensionValue < 0) throw new IllegalArgumentException("The capacity value must not be negative.");
+            if (dimensionValue < 0)
+                throw new IllegalArgumentException("The capacity value must not be negative.");
             capacityBuilder.addDimension(dimensionIndex, dimensionValue);
             return this;
         }
 
-        public Builder<T> setTimeWindow(TimeWindow tw){
-            if (tw == null) throw new IllegalArgumentException("The time window must not be null.");
+        public Builder<T> setTimeWindow(TimeWindow tw) {
+            if (tw == null)
+                throw new IllegalArgumentException("The time window must not be null.");
             this.timeWindows = new TimeWindowsImpl();
             timeWindows.add(tw);
             return this;
@@ -200,7 +203,31 @@ public class Service extends AbstractJob {
         }
 
         public Builder<T> addAllTimeWindows(Collection<TimeWindow> timeWindows) {
-            for (TimeWindow tw : timeWindows) addTimeWindow(tw);
+            for (TimeWindow tw : timeWindows)
+                addTimeWindow(tw);
+            return this;
+        }
+
+        public Builder<T> addOverlappingTimeWindow(TimeWindow timeWindow) {
+            if (timeWindow == null) {
+                throw new IllegalArgumentException("The time window must not be null.");
+            }
+            if (!twAdded) {
+                timeWindows = new TimeWindowsOverlapImpl();
+                twAdded = true;
+            }
+            timeWindows.add(timeWindow);
+            return this;
+        }
+
+        public Builder<T> addOverlappingTimeWindow(double earliest, double latest) {
+            return addOverlappingTimeWindow(TimeWindow.newInstance(earliest, latest));
+        }
+
+        public Builder<T> addAllOverlappingTimeWindows(Collection<TimeWindow> timeWindows) {
+            for (TimeWindow tw : timeWindows) {
+                addOverlappingTimeWindow(tw);
+            }
             return this;
         }
 
