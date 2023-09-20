@@ -32,7 +32,7 @@ public class TimeWindowsImpl implements TimeWindows {
     private Collection<TimeWindow> timeWindows = new ArrayList<TimeWindow>();
 
     @Override
-    public void add(TimeWindow timeWindow) {
+    public void add(TimeWindow timeWindow){
         for(TimeWindow tw : timeWindows){
             if(timeWindow.getStart() > tw.getStart() && timeWindow.getStart() < tw.getEnd()){
                 throw new IllegalArgumentException("time-windows cannot overlap each other. overlap: " + tw + ", " + timeWindow);
