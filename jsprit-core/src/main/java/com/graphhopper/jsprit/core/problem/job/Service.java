@@ -186,6 +186,20 @@ public class Service extends AbstractJob {
             return this;
         }
 
+        public Builder<T> setTimeWindows(TimeWindows timeWindows){
+            if (timeWindows == null) throw new IllegalArgumentException("The time windows must not be null.");
+            if (twAdded) {
+                // Report already added TW for ascending compatibility and API clarity
+                // (otherwise previous calls to addTimeWindow would be silently ignored)
+                for (TimeWindow tw : this.timeWindows.getTimeWindows()) {
+                    timeWindows.add(tw);
+                }
+            }
+            this.timeWindows = timeWindows;
+            twAdded = true;
+            return this;
+        }
+
         public Builder<T> addTimeWindow(TimeWindow timeWindow) {
             if (timeWindow == null) throw new IllegalArgumentException("The time window must not be null.");
             if(!twAdded){
@@ -202,29 +216,6 @@ public class Service extends AbstractJob {
 
         public Builder<T> addAllTimeWindows(Collection<TimeWindow> timeWindows) {
             for (TimeWindow tw : timeWindows) addTimeWindow(tw);
-            return this;
-        }
-
-        public Builder<T> addOverlappingTimeWindow(TimeWindow timeWindow) {
-            if (timeWindow == null) {
-                throw new IllegalArgumentException("The time window must not be null.");
-            }
-            if (!twAdded) {
-                timeWindows = new TimeWindowsOverlapImpl();
-                twAdded = true;
-            }
-            timeWindows.add(timeWindow);
-            return this;
-        }
-
-        public Builder<T> addOverlappingTimeWindow(double earliest, double latest) {
-            return addOverlappingTimeWindow(TimeWindow.newInstance(earliest, latest));
-        }
-
-        public Builder<T> addAllOverlappingTimeWindows(Collection<TimeWindow> timeWindows) {
-            for (TimeWindow tw : timeWindows) {
-                addOverlappingTimeWindow(tw);
-            }
             return this;
         }
 

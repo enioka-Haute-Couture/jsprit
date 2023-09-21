@@ -26,6 +26,7 @@ import com.graphhopper.jsprit.core.problem.misc.JobInsertionContext;
  * Created by schroeder on 20/05/15.
  */
 public interface TimeWindows {
+    static TimeWindow defaultTimeWindow = TimeWindow.newInstance(0.0, Double.MAX_VALUE);
 
     public void add(TimeWindow timeWindow);
 
