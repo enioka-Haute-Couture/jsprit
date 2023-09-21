@@ -141,9 +141,6 @@ final class ServiceInsertionCalculator extends AbstractInsertionCalculator {
             insertionContext.setActivityContext(activityContext);
             boolean not_fulfilled_break = true;
 			for(TimeWindow timeWindow : service.getTimeWindows(insertionContext)) {
-                if (!timeWindow.isApplicable(insertionContext)) {
-                    timeWindow = defaultTimeWindow;
-                }
                 deliveryAct2Insert.setTheoreticalEarliestOperationStartTime(timeWindow.getStart());
                 deliveryAct2Insert.setTheoreticalLatestOperationStartTime(timeWindow.getEnd());
 

@@ -44,9 +44,6 @@ public class IgnoreConditionalTimeWindowTest {
 
         VehicleType vehicleType1 = vehicleTypeBuilder1.build();
         VehicleType vehicleType2 = vehicleTypeBuilder2.build();
-		/*
-         * get a vehicle-builder and build a vehicle located at (10,10) with type "vehicleType"
-		 */
 
         VehicleImpl vehicle1,vehicle2;
         {

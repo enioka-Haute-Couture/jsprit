@@ -21,6 +21,7 @@ package com.graphhopper.jsprit.core.problem.solution.route.activity;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 import com.graphhopper.jsprit.core.problem.misc.JobInsertionContext;
 
@@ -54,7 +55,16 @@ public class TimeWindowsImpl implements TimeWindows {
 
     @Override
     public Collection<TimeWindow> getTimeWindows(JobInsertionContext insertionContext) {
-        return getTimeWindows();
+        List<TimeWindow> timeWindows = new ArrayList<TimeWindow>(this.timeWindows.size());
+        for(TimeWindow tw : this.timeWindows){
+            if (tw.isApplicable(insertionContext)) {
+                timeWindows.add(tw);
+            }
+        }
+        if (timeWindows.isEmpty()) {
+            timeWindows.add(TimeWindows.defaultTimeWindow);
+        }
+        return Collections.unmodifiableCollection(timeWindows);
     }
 
     @Override
