@@ -94,18 +94,22 @@ public class TimeWindowsOverlapImpl implements TimeWindows {
             if (excludedTw.getStart() >= includedTw.getStart() && excludedTw.getEnd() <= excludedTw.getEnd()) {
                 // Inclusion           [            ]
                 // Exclusion             [      ]
-                newResult.add(TimeWindow.newInstance(includedTw.getStart(), excludedTw.getEnd()));
-                newResult.add(TimeWindow.newInstance(includedTw.getEnd(), excludedTw.getEnd()));
+                if (excludedTw.getStart() > includedTw.getStart()) {
+                    newResult.add(TimeWindow.newInstance(includedTw.getStart(), excludedTw.getStart()));
+                }
+                if (excludedTw.getEnd() < includedTw.getEnd()) {
+                    newResult.add(TimeWindow.newInstance(excludedTw.getEnd(), includedTw.getEnd()));
+                }
             }
-            else if (excludedTw.getStart() < includedTw.getStart() && excludedTw.getEnd() < excludedTw.getEnd() && excludedTw.getEnd() > includedTw.getStart()) {
+            else if (excludedTw.getStart() < includedTw.getStart() && excludedTw.getEnd() < includedTw.getEnd() && excludedTw.getEnd() > includedTw.getStart()) {
                 // Inclusion           [            ]
                 // Exclusion        [      ]
-                newResult.add(TimeWindow.newInstance(excludedTw.getStart(), includedTw.getEnd()));
+                newResult.add(TimeWindow.newInstance(excludedTw.getEnd(), includedTw.getEnd()));
             }
-            else if (excludedTw.getStart() > includedTw.getStart() && excludedTw.getEnd() > includedTw.getEnd() && excludedTw.getStart() < includedTw.getEnd()) {
+            else if (excludedTw.getStart() > includedTw.getStart() && excludedTw.getStart() < includedTw.getEnd() && excludedTw.getEnd() > includedTw.getEnd()) {
                 // Inclusion           [            ]
                 // Exclusion                      [      ]
-                newResult.add(TimeWindow.newInstance(excludedTw.getStart(), includedTw.getStart()));
+                newResult.add(TimeWindow.newInstance(includedTw.getStart(), excludedTw.getStart()));
             }
             else if (excludedTw.getStart() < includedTw.getStart() && excludedTw.getEnd() > includedTw.getEnd()) {
                 // Inclusion           [            ]
