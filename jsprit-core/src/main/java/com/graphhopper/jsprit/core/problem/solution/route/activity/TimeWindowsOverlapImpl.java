@@ -7,7 +7,9 @@ import java.util.List;
 
 import com.graphhopper.jsprit.core.problem.misc.JobInsertionContext;
 
-
+/**
+ * An alternative implementation of TimeWindows that allows for overlapping time windows as well as exclusions.
+ */
 public class TimeWindowsOverlapImpl implements TimeWindows {
 
     private List<TimeWindow> includedTimeWindows = new ArrayList<TimeWindow>();
@@ -22,7 +24,7 @@ public class TimeWindowsOverlapImpl implements TimeWindows {
         includedTimeWindows.add(timeWindow);
 
         // Keep collection sorted by start time - needed by getTimeWindows()
-        Collections.sort(includedTimeWindows);
+        Collections.sort(includedTimeWindows, (a, b) -> (int)(a.getStart() - b.getStart()));
     }
 
     public void addExcludedTimeWindow(TimeWindow timeWindow) {
@@ -32,7 +34,7 @@ public class TimeWindowsOverlapImpl implements TimeWindows {
         excludedTimeWindows.add(timeWindow);
 
         // Keep collection sorted by start time - needed by getTimeWindows()
-        Collections.sort(excludedTimeWindows);
+        Collections.sort(excludedTimeWindows, (a, b) -> (int)(a.getStart() - b.getStart()));
     }
 
     public void addIncludedTimeWindow(TimeWindow timeWindow) {
@@ -47,7 +49,7 @@ public class TimeWindowsOverlapImpl implements TimeWindows {
 
     @Override
     public Collection<TimeWindow> getTimeWindows(JobInsertionContext insertionContext) {
-        // The easy case: no exclusions, no performance loss.
+        // First easy case: no exclusions, no performance loss.
         if (excludedTimeWindows.isEmpty()) {
             return getTimeWindows();
         }

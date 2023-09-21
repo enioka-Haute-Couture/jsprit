@@ -178,7 +178,18 @@ public class Shipment extends AbstractJob {
             return this;
         }
 
-
+        public Builder setPickupTimeWindows(TimeWindows timeWindows){
+            if (timeWindows == null) throw new IllegalArgumentException("The time windows must not be null.");
+            if (pickupTimeWindows != null) {
+                // Report already added TW for ascending compatibility and API clarity
+                // (otherwise previous calls to addXXXTimeWindow would be silently ignored)
+                for (TimeWindow tw : this.pickupTimeWindows.getTimeWindows()) {
+                    timeWindows.add(tw);
+                }
+            }
+            this.pickupTimeWindows = timeWindows;
+            return this;
+        }
 
         /**
          * Sets delivery location.
@@ -221,6 +232,19 @@ public class Shipment extends AbstractJob {
             if (timeWindow == null) throw new IllegalArgumentException("The delivery time window must not be null.");
             this.deliveryTimeWindows = new TimeWindowsImpl();
             this.deliveryTimeWindows.add(timeWindow);
+            return this;
+        }
+
+        public Builder setDeliveryTimeWindows(TimeWindows timeWindows){
+            if (timeWindows == null) throw new IllegalArgumentException("The time windows must not be null.");
+            if (deliveryTimeWindows != null) {
+                // Report already added TW for ascending compatibility and API clarity
+                // (otherwise previous calls to addXXXTimeWindow would be silently ignored)
+                for (TimeWindow tw : this.deliveryTimeWindows.getTimeWindows()) {
+                    timeWindows.add(tw);
+                }
+            }
+            this.deliveryTimeWindows = timeWindows;
             return this;
         }
 

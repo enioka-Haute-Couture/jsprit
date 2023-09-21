@@ -25,7 +25,7 @@ import com.graphhopper.jsprit.core.problem.misc.JobInsertionContext;
  * @author stefan schroeder
  */
 
-public class TimeWindow implements Comparable<TimeWindow> {
+public class TimeWindow {
 
     /**
      * Returns new instance of TimeWindow.
@@ -125,18 +125,5 @@ public class TimeWindow implements Comparable<TimeWindow> {
      */
     public boolean isApplicable(JobInsertionContext insertionContext) {
         return true;
-    }
-
-    /**
-     * When computing overlapping time window, return whether this time window will include or exclude the overlapping
-     * @return
-     */
-    public boolean isExcluding() {
-        return false;
-    }
-
-    @Override
-    public int compareTo(TimeWindow tw) {
-        return (int)(this.getStart() - tw.getStart());
     }
 }
