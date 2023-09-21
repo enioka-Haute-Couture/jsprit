@@ -15,6 +15,16 @@ public class TimeWindowsOverlapImpl implements TimeWindows {
     private List<TimeWindow> includedTimeWindows = new ArrayList<TimeWindow>();
     private List<TimeWindow> excludedTimeWindows = new ArrayList<TimeWindow>();
 
+    public static TimeWindowsOverlapImpl newInstance() {
+        return new TimeWindowsOverlapImpl();
+    }
+
+    public static TimeWindowsOverlapImpl newInstance(List<TimeWindow> includedTimeWindows) {
+        TimeWindowsOverlapImpl res = new TimeWindowsOverlapImpl();
+        res.includedTimeWindows = includedTimeWindows;
+        return res;
+    }
+
     @Override
     public void add(TimeWindow timeWindow) {
         if (timeWindow == null) {
@@ -27,7 +37,7 @@ public class TimeWindowsOverlapImpl implements TimeWindows {
         Collections.sort(includedTimeWindows, (a, b) -> (int)(a.getStart() - b.getStart()));
     }
 
-    public void addExcludedTimeWindow(TimeWindow timeWindow) {
+    public TimeWindowsOverlapImpl addExcludedTimeWindow(TimeWindow timeWindow) {
         if (timeWindow == null) {
             throw new IllegalArgumentException("The time window must not be null.");
         }
@@ -35,11 +45,13 @@ public class TimeWindowsOverlapImpl implements TimeWindows {
 
         // Keep collection sorted by start time - needed by getTimeWindows()
         Collections.sort(excludedTimeWindows, (a, b) -> (int)(a.getStart() - b.getStart()));
+        return this;
     }
 
-    public void addIncludedTimeWindow(TimeWindow timeWindow) {
+    public TimeWindowsOverlapImpl addIncludedTimeWindow(TimeWindow timeWindow) {
         // Synonym for the sake of symmetry
         add(timeWindow);
+        return this;
     }
 
     @Override
