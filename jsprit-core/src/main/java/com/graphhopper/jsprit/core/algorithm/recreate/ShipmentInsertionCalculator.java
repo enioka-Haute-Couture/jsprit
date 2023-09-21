@@ -194,7 +194,7 @@ final class ShipmentInsertionCalculator extends AbstractInsertionCalculator {
                     ActivityContext activityContext_ = new ActivityContext();
                     activityContext_.setInsertionIndex(j);
                     insertionContext.setActivityContext(activityContext_);
-                    for (TimeWindow deliveryTimeWindow : shipment.getDeliveryTimeWindows()) {
+                    for (TimeWindow deliveryTimeWindow : shipment.getDeliveryTimeWindows(insertionContext)) {
                         deliverShipment.setTheoreticalEarliestOperationStartTime(deliveryTimeWindow.getStart());
                         deliverShipment.setTheoreticalLatestOperationStartTime(deliveryTimeWindow.getEnd());
 

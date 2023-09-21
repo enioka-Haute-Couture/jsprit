@@ -468,6 +468,10 @@ public class Shipment extends AbstractJob {
         return deliveryTimeWindows.getTimeWindows();
     }
 
+    public Collection<TimeWindow> getDeliveryTimeWindows(JobInsertionContext insertionContext) {
+        return deliveryTimeWindows.getTimeWindows(insertionContext);
+    }
+
     /**
      * Returns the time-window of pickup.
      *
