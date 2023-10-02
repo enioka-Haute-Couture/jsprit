@@ -34,6 +34,11 @@ public interface VehicleType {
     String getTypeId();
 
     /**
+     *  Category of vehicle, allow to use different Cost Matrix according to vehicle's category
+     */
+    int getCategoryId();
+
+    /**
      * Returns capacity dimensions.
      *
      * @return {@link com.graphhopper.jsprit.core.problem.Capacity}

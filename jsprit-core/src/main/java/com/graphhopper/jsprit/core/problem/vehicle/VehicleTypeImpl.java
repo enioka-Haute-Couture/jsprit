@@ -124,6 +124,7 @@ public class VehicleTypeImpl implements VehicleType {
         }
 
         private String id;
+        private int categoryId = 0;
         private double maxVelo = Double.MAX_VALUE;
         /**
          * default cost values for default vehicle type
@@ -148,7 +149,6 @@ public class VehicleTypeImpl implements VehicleType {
             this.id = id;
         }
 
-
         /**
          * Sets user specific domain data associated with the object.
          *
@@ -164,6 +164,11 @@ public class VehicleTypeImpl implements VehicleType {
          */
         public Builder setUserData(Object userData) {
             this.userData = userData;
+            return this;
+        }
+
+        public VehicleTypeImpl.Builder setCategoryId(int categoryId) {
+            this.categoryId = categoryId;
             return this;
         }
 
@@ -333,6 +338,7 @@ public class VehicleTypeImpl implements VehicleType {
 
         if (Double.compare(that.maxVelocity, maxVelocity) != 0) return false;
         if (!typeId.equals(that.typeId)) return false;
+        if (categoryId != that.categoryId) return false;
         if (profile != null ? !profile.equals(that.profile) : that.profile != null) return false;
         if (!vehicleCostParams.equals(that.vehicleCostParams)) return false;
         return capacityDimensions.equals(that.capacityDimensions);
@@ -350,6 +356,8 @@ public class VehicleTypeImpl implements VehicleType {
         result = 31 * result + (int) (temp ^ (temp >>> 32));
         return result;
     }
+
+    private final int categoryId;
 
     private final String typeId;
 
@@ -370,6 +378,7 @@ public class VehicleTypeImpl implements VehicleType {
      */
     private VehicleTypeImpl(VehicleTypeImpl.Builder builder) {
         this.userData = builder.userData;
+        this.categoryId = builder.categoryId;
         typeId = builder.id;
         maxVelocity = builder.maxVelo;
         vehicleCostParams = new VehicleCostParams(builder.fixedCost, builder.perTime, builder.perDistance, builder.perWaitingTime, builder.perServiceTime);
@@ -421,6 +430,11 @@ public class VehicleTypeImpl implements VehicleType {
     @Override
     public String getProfile() {
         return profile;
+    }
+
+    @Override
+    public int getCategoryId() {
+        return categoryId;
     }
 
 }
