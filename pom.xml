@@ -19,7 +19,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.graphhopper</groupId>
+    <groupId>com.enioka.hc.optimulus</groupId>
     <artifactId>jsprit</artifactId>
     <version>2.1.0-SNAPSHOT</version>
 
@@ -45,9 +45,9 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git@github.com:graphhopper/jsprit.git</connection>
-        <developerConnection>scm:git:https://github.com/graphhopper/jsprit.git</developerConnection>
-        <url>http://github.com/graphhopper/jsprit/tree/master</url>
+        <connection>scm:git:git@github.com:enioka-Haute-Couture/jsprit.git</connection>
+        <developerConnection>scm:git:https://github.com/enioka-Haute-Couture/jsprit.git</developerConnection>
+        <url>https://github.com/enioka-Haute-Couture/jsprit/</url>
         <tag>HEAD</tag>
     </scm>
 
@@ -188,9 +188,14 @@
     <distributionManagement>
         <repository>
             <id>github</id>
-            <name>GitHub GraphHopper Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/graphhopper/jsprit</url>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/enioka-Haute-Couture/jsprit</url>
         </repository>
+        <snapshotRepository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/enioka-Haute-Couture/jsprit</url>
+        </snapshotRepository>
     </distributionManagement>
 
     <!-- mvn clean deploy -P release -->
@@ -213,6 +218,12 @@
                                 <goals>
                                     <goal>sign</goal>
                                 </goals>
+                                <configuration>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
                             </execution>
                         </executions>
                         <configuration>
@@ -225,7 +236,7 @@
                     <plugin>
                         <groupId>org.sonatype.central</groupId>
                         <artifactId>central-publishing-maven-plugin</artifactId>
-                        <version>0.10.0</version>
+                        <version>0.12.0</version>
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>
