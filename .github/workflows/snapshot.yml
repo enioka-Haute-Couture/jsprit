@@ -1,0 +1,26 @@
+name: Maven snapshot publication on GH
+
+on:
+    push:
+        branches:
+            - downstream
+    workflow_dispatch:
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            -   uses: actions/checkout@v2
+
+            -   name: Set up Java
+                uses: actions/setup-java@v2
+                with:
+                    java-version: '8'
+                    distribution: 'zulu'
+                    cache: maven
+
+            -   name: Publish package to local GH repository
+                run: mvn --batch-mode deploy
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

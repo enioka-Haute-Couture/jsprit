@@ -14,7 +14,7 @@ If you want to use the latest release of jsprit-core, add the following lines to
 
 ```
 <dependency>
-   <groupId>com.graphhopper</groupId>
+   <groupId>com.enioka.hc.optimulus</groupId>
    <artifactId>jsprit-core</artifactId>
    <version>{version}</version>
 </dependency>
