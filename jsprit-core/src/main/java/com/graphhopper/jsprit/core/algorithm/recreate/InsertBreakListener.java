@@ -42,10 +42,12 @@ class InsertBreakListener implements EventListener {
             VehicleRoute vehicleRoute = ((InsertBreak) event).getVehicleRoute();
             if (!vehicleRoute.isEmpty()) {
                 if (vehicleRoute.getVehicle() != ((InsertBreak) event).getNewVehicle()) {
-                    if (vehicleRoute.getVehicle().getBreak() != null) {
-                        boolean removed = vehicleRoute.getTourActivities().removeJob(vehicleRoute.getVehicle().getBreak());
-                        if (removed)
-                            logger.trace("remove old break " + vehicleRoute.getVehicle().getBreak());
+                    if (vehicleRoute.getVehicle().getBreaks() != null && !vehicleRoute.getVehicle().getBreaks().isEmpty()) {
+                        for(var aBreak : vehicleRoute.getVehicle().getBreaks()) {
+                            boolean removed = vehicleRoute.getTourActivities().removeJob(aBreak);
+                            if (removed)
+                                logger.trace("remove old break " + aBreak);
+                        }
                     }
                 }
             }

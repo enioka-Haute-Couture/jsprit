@@ -68,6 +68,18 @@ public final class Location implements HasIndex, HasId {
 
         private Object userData;
 
+        private double timeFromPreviousActivity = -1d;
+
+        private double timeFromPreviousNonBreakActivity = -1d;
+
+        private double distanceFromPreviousActivity = -1d;
+
+        private double distanceFromPreviousNonBreakActivity = -1d;
+
+        private String previousLocationId = null;
+
+        private String nextLocationId = null;
+
         public static Builder newInstance() {
             return new Builder();
         }
@@ -86,6 +98,36 @@ public final class Location implements HasIndex, HasId {
          */
         public Builder setUserData(Object userData) {
             this.userData = userData;
+            return this;
+        }
+
+        public Builder setTimeFromPreviousActivity(double timeToBreak) {
+            this.timeFromPreviousActivity = timeToBreak;
+            return this;
+        }
+
+        public Builder setTimeFromPreviousNonBreakActivity(double timeFromPreviousNonBreakActivity) {
+            this.timeFromPreviousNonBreakActivity = timeFromPreviousNonBreakActivity;
+            return this;
+        }
+
+        public Builder setDistanceFromPreviousActivity(double distanceToBreak) {
+            this.distanceFromPreviousActivity = distanceToBreak;
+            return this;
+        }
+
+        public Builder setDistanceFromPreviousNonBreakActivity(double distanceToPreviousNonBreakActivity) {
+            this.distanceFromPreviousNonBreakActivity = distanceToPreviousNonBreakActivity;
+            return this;
+        }
+
+        public Builder setPreviousLocationId(String previousLocationId) {
+            this.previousLocationId = previousLocationId;
+            return this;
+        }
+
+        public Builder setNextLocationId(String nextLocationId) {
+            this.nextLocationId = nextLocationId;
             return this;
         }
 
@@ -143,7 +185,7 @@ public final class Location implements HasIndex, HasId {
             }
             if (index != -1 && id == null) {
                 this.id = Integer.toString(index);
-            }
+            }          
             return new Location(this);
         }
 
@@ -161,12 +203,30 @@ public final class Location implements HasIndex, HasId {
 
     private Object userData;
 
+    private double timeFromPreviousActivity = -1d;
+
+    private double timeFromPreviousNonBreakActivity = -1d;
+
+    private double distanceFromPreviousActivity = -1d;
+
+    private double distanceFromPreviousNonBreakActivity = -1d;
+
+    private final String previousLocationId;
+
+    private final String nextLocationId;
+
     private Location(Builder builder) {
         this.userData = builder.userData;
         this.index = builder.index;
         this.coordinate = builder.coordinate;
         this.id = builder.id;
         this.name = builder.name;
+        this.previousLocationId = builder.previousLocationId;
+        this.nextLocationId = builder.nextLocationId;
+        this.timeFromPreviousActivity = builder.timeFromPreviousActivity;
+        this.timeFromPreviousNonBreakActivity = builder.timeFromPreviousNonBreakActivity;
+        this.distanceFromPreviousActivity = builder.distanceFromPreviousActivity;
+        this.distanceFromPreviousNonBreakActivity = builder.distanceFromPreviousNonBreakActivity;
     }
 
     /**
@@ -194,6 +254,46 @@ public final class Location implements HasIndex, HasId {
         return name;
     }
 
+    public double getTimeFromPreviousActivity() {
+        return timeFromPreviousActivity;
+    }
+
+    public void setTimeFromPreviousActivity(double timeToBreak) {
+        this.timeFromPreviousActivity = timeToBreak;
+    }
+
+    public double getTimeFromPreviousNonBreakActivity() {
+        return timeFromPreviousNonBreakActivity;
+    }
+
+    public void setTimeFromPreviousNonBreakActivity(double timeFromPreviousNonBreakActivity) {
+        this.timeFromPreviousNonBreakActivity = timeFromPreviousNonBreakActivity;
+    }
+
+    public double getDistanceFromPreviousActivity() {
+        return distanceFromPreviousActivity;
+    }
+
+    public void setDistanceFromPreviousActivity(double distanceFromPreviousActivity) {
+        this.distanceFromPreviousActivity = distanceFromPreviousActivity;
+    }
+
+    public double getDistanceFromPreviousNonBreakActivity() {
+        return distanceFromPreviousNonBreakActivity;
+    }
+
+    public void setDistanceFromPreviousNonBreakActivity(double distanceFromPreviousNonBreakActivity) {
+        this.distanceFromPreviousNonBreakActivity = distanceFromPreviousNonBreakActivity;
+    }
+
+    public String getPreviousLocationId() {
+        return previousLocationId;
+    }
+
+    public String getNextLocationId() {
+        return nextLocationId;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -214,6 +314,6 @@ public final class Location implements HasIndex, HasId {
 
     @Override
     public String toString() {
-        return "[id=" + id + "][index=" + index + "][coordinate=" + coordinate + "]";
+        return "[id=" + id + "][index=" + index + "][coordinate=" + coordinate + "][timeToBreak=" + timeFromPreviousActivity + "]";
     }
 }

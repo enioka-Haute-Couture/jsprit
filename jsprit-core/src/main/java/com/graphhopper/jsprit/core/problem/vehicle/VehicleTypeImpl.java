@@ -42,6 +42,7 @@ public class VehicleTypeImpl implements VehicleType {
         }
 
         public final double fix;
+        public final boolean useExternalFixedServiceCosts;
 
         public final double perTransportTimeUnit;
         public final double perDistanceUnit;
@@ -55,6 +56,7 @@ public class VehicleTypeImpl implements VehicleType {
             this.perDistanceUnit = perDistanceUnit;
             this.perWaitingTimeUnit = 0.;
             this.perServiceTimeUnit = 0.;
+            this.useExternalFixedServiceCosts = false;
         }
 
         public VehicleCostParams(double fix, double perTimeUnit, double perDistanceUnit, double perWaitingTimeUnit) {
@@ -63,14 +65,16 @@ public class VehicleTypeImpl implements VehicleType {
             this.perDistanceUnit = perDistanceUnit;
             this.perWaitingTimeUnit = perWaitingTimeUnit;
             this.perServiceTimeUnit = 0.;
+            this.useExternalFixedServiceCosts = false;
         }
 
-        public VehicleCostParams(double fix, double perTimeUnit, double perDistanceUnit, double perWaitingTimeUnit, double perServiceTimeUnit) {
+        public VehicleCostParams(double fix, double perTimeUnit, double perDistanceUnit, double perWaitingTimeUnit, double perServiceTimeUnit, boolean useExternalFixedServiceCosts) {
             this.fix = fix;
             this.perTransportTimeUnit = perTimeUnit;
             this.perDistanceUnit = perDistanceUnit;
             this.perWaitingTimeUnit = perWaitingTimeUnit;
             this.perServiceTimeUnit = perServiceTimeUnit;
+            this.useExternalFixedServiceCosts = useExternalFixedServiceCosts;   
         }
 
         @Override
@@ -129,6 +133,7 @@ public class VehicleTypeImpl implements VehicleType {
          * default cost values for default vehicle type
          */
         private double fixedCost = 0.0;
+        private boolean useExternalFixedServiceCosts = false;
         private double perDistance = 1.0;
         private double perTime = 0.0;
         private double perWaitingTime = 0.0;
@@ -322,6 +327,11 @@ public class VehicleTypeImpl implements VehicleType {
             this.profile = profile;
             return this;
         }
+
+        public Builder setUseExternalFixedServiceCosts(boolean useExternalFixedServiceCosts) {
+            this.useExternalFixedServiceCosts = useExternalFixedServiceCosts;
+            return this;
+        }
     }
 
     @Override
@@ -372,7 +382,7 @@ public class VehicleTypeImpl implements VehicleType {
         this.userData = builder.userData;
         typeId = builder.id;
         maxVelocity = builder.maxVelo;
-        vehicleCostParams = new VehicleCostParams(builder.fixedCost, builder.perTime, builder.perDistance, builder.perWaitingTime, builder.perServiceTime);
+        vehicleCostParams = new VehicleCostParams(builder.fixedCost, builder.perTime, builder.perDistance, builder.perWaitingTime, builder.perServiceTime, builder.useExternalFixedServiceCosts);
         capacityDimensions = builder.capacityDimensions;
         profile = builder.profile;
     }
