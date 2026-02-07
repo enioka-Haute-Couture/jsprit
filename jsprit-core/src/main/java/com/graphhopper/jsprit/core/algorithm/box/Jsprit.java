@@ -125,6 +125,7 @@ public class Jsprit {
         MAX_TRANSPORT_COSTS("max_transport_costs"),
         CONSTRUCTION("construction"),
         BREAK_SCHEDULING("break_scheduling"),
+        BREAK_SCHEDULING2("break_scheduling2"),
         STRING_K_MIN("string_kmin"),
         STRING_K_MAX("string_kmax"),
         STRING_L_MIN("string_lmin"),
@@ -775,6 +776,10 @@ public class Jsprit {
         if(toBoolean(getProperty(Parameter.BREAK_SCHEDULING.toString()))) {
             vra.addListener(new BreakScheduling(vrp, stateManager, constraintManager));
         }
+        else if (toBoolean(getProperty(Parameter.BREAK_SCHEDULING2.toString()))) {
+            vra.addListener(new BreakScheduling2(vrp, stateManager, constraintManager));
+        }
+
         handleExecutorShutdown(vra);
         vra.setMaxIterations(Integer.parseInt(properties.getProperty(Parameter.ITERATIONS.toString())));
 

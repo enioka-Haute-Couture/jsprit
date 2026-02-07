@@ -161,6 +161,8 @@ public final class Location implements HasIndex, HasId {
 
     private Object userData;
 
+    private double timeToBreak = -1d;
+
     private Location(Builder builder) {
         this.userData = builder.userData;
         this.index = builder.index;
@@ -194,6 +196,14 @@ public final class Location implements HasIndex, HasId {
         return name;
     }
 
+    public double getTimeToBreak() {
+        return timeToBreak;
+    }
+
+    public void setTimeToBreak(double timeToBreak) {
+        this.timeToBreak = timeToBreak;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -214,6 +224,6 @@ public final class Location implements HasIndex, HasId {
 
     @Override
     public String toString() {
-        return "[id=" + id + "][index=" + index + "][coordinate=" + coordinate + "]";
+        return "[id=" + id + "][index=" + index + "][coordinate=" + coordinate + "][timeToBreak=" + timeToBreak + "]";
     }
 }
