@@ -250,18 +250,21 @@ public class VehicleRoutingProblem {
             boolean hasBreaks = false;
             Set<String> uniqueBreakIds = new HashSet<>();
             for (Vehicle v : uniqueVehicles) {
-                if (v.getBreak() != null) {
-                    if (!uniqueBreakIds.add(v.getBreak().getId()))
-                        throw new IllegalArgumentException("The vehicle routing roblem already contains a vehicle break with id " + v.getBreak().getId() + ". Please choose unique ids for each vehicle break.");
-                    hasBreaks = true;
-                    List<AbstractActivity> breakActivities = jobActivityFactory.createActivities(v.getBreak());
-                    if (breakActivities.isEmpty())
-                        throw new IllegalArgumentException("At least one activity for break needs to be created by activityFactory.");
-                    for(AbstractActivity act : breakActivities){
-                        act.setIndex(activityIndexCounter);
-                        incActivityIndexCounter();
+                if (v.getBreaks() != null) {
+                    for(var aBreak : v.getBreaks())
+                    {
+                        if (!uniqueBreakIds.add(aBreak.getId()))
+                            throw new IllegalArgumentException("The vehicle routing roblem already contains a vehicle break with id " + aBreak.getId() + ". Please choose unique ids for each vehicle break.");
+                        hasBreaks = true;
+                        List<AbstractActivity> breakActivities = jobActivityFactory.createActivities(aBreak);
+                        if (breakActivities.isEmpty())
+                            throw new IllegalArgumentException("At least one activity for break needs to be created by activityFactory.");
+                        for(AbstractActivity act : breakActivities){
+                            act.setIndex(activityIndexCounter);
+                            incActivityIndexCounter();
+                        }
+                        activityMap.put(aBreak, breakActivities);
                     }
-                    activityMap.put(v.getBreak(), breakActivities);
                 }
             }
             return hasBreaks;

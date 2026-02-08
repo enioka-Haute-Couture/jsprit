@@ -36,9 +36,7 @@ import com.graphhopper.jsprit.core.problem.vehicle.Vehicle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.Iterator;
-import java.util.List;
 
 /**
  * Calculator that calculates the best insertion position for a service.
@@ -94,7 +92,7 @@ final class BreakInsertionCalculator2 implements JobInsertionCostsCalculator {
     @Override
     public InsertionData getInsertionData(final VehicleRoute currentRoute, final Job jobToInsert, final Vehicle newVehicle, double newVehicleDepartureTime, final Driver newDriver, final double bestKnownCosts) {
         Break breakToInsert = (Break) jobToInsert;
-        if (newVehicle.getBreak() == null || newVehicle.getBreak() != breakToInsert) {
+        if (newVehicle.getBreaks() == null || !newVehicle.getBreaks().contains(breakToInsert)) {
             return InsertionData.createEmptyInsertionData();
         }
         if (currentRoute.isEmpty()) return InsertionData.createEmptyInsertionData();
@@ -141,15 +139,27 @@ final class BreakInsertionCalculator2 implements JobInsertionCostsCalculator {
                 nextAct = end;
                 tourEnd = true;
             }
-            boolean breakThis = true;
 
             // The break can be anywhere between prevAct and nextAct, represented by breakLocation which does not have precise coordinates.
             Location breakLocation = Location.Builder.newInstance().setIndex(prevAct.getLocation().getIndex()).setId("break" + jobToInsert.getId()).build();
             
             breakAct2Insert.setTheoreticalEarliestOperationStartTime(breakToInsert.getTimeWindow().getStart());
             breakAct2Insert.setTheoreticalLatestOperationStartTime(breakToInsert.getTimeWindow().getEnd());
+            breakAct2Insert.setLocation(breakLocation);
             
-            breakLocation.setTimeToBreak(Math.max(0, (breakToInsert.getTimeWindow().getStart() - prevAct.getEndTime())));
+            // We try to insert the break as early as possible.
+            breakLocation.setTimeFromPreviousActivity(Math.max(0, breakToInsert.getTimeWindow().getStart() - prevAct.getEndTime()));
+            breakLocation.setTimeFromPreviousNonBreakActivity(breakLocation.getTimeFromPreviousActivity() + (prevAct.getLocation().getTimeFromPreviousNonBreakActivity() > 0 ? prevAct.getLocation().getTimeFromPreviousNonBreakActivity() : 0));
+            if (breakLocation.getTimeFromPreviousActivity() > 1) {
+                // If the break is not inserted immediately after prevAct, we need to calculate the distance to break (simply proportional to the time to break).
+                var timeBetweenPrevAndNext = transportCosts.getTransportTime(prevAct.getLocation(), nextAct.getLocation(), prevActStartTime, newDriver, newVehicle);
+                var distanceToBreak = transportCosts.getDistance(prevAct.getLocation(),  nextAct.getLocation(), prevActStartTime, newVehicle) * breakLocation.getTimeFromPreviousActivity() / timeBetweenPrevAndNext;
+                breakLocation.setDistanceFromPreviousActivity(distanceToBreak);
+                breakLocation.setDistanceFromPreviousNonBreakActivity(distanceToBreak + (prevAct.getLocation().getDistanceFromPreviousNonBreakActivity() > 0 ? prevAct.getLocation().getDistanceFromPreviousNonBreakActivity() : 0));
+            } else {
+                breakLocation.setDistanceFromPreviousActivity(0);
+                breakLocation.setDistanceFromPreviousNonBreakActivity(0);
+            }
             
             ConstraintsStatus status = hardActivityLevelConstraint.fulfilled(insertionContext, prevAct, breakAct2Insert, nextAct, prevActStartTime);
             if (status.equals(ConstraintsStatus.FULFILLED)) {
@@ -159,6 +169,15 @@ final class BreakInsertionCalculator2 implements JobInsertionCostsCalculator {
                 if (additionalICostsAtRouteLevel + additionalICostsAtActLevel + additionalTransportationCosts < bestCost) {
                     bestCost = additionalICostsAtRouteLevel + additionalICostsAtActLevel + additionalTransportationCosts;
                     insertionIndex = actIndex;
+                    // We need to copy the breakLocation as it is modified in each iteration of the loop.
+                    bestLocation  = Location.Builder.newInstance()
+                        .setIndex(breakLocation.getIndex())
+                        .setId(breakLocation.getId())
+                        .setTimeFromPreviousActivity(breakLocation.getTimeFromPreviousActivity())
+                        .setTimeFromPreviousNonBreakActivity(breakLocation.getTimeFromPreviousNonBreakActivity())
+                        .setDistanceFromPreviousActivity(breakLocation.getDistanceFromPreviousActivity())
+                        .setDistanceFromPreviousNonBreakActivity(breakLocation.getDistanceFromPreviousNonBreakActivity())
+                        .setCoordinate(prevAct.getLocation().getCoordinate()).build();
                 }
             } 
             
@@ -166,7 +185,6 @@ final class BreakInsertionCalculator2 implements JobInsertionCostsCalculator {
             prevActStartTime = Math.max(nextActArrTime, nextAct.getTheoreticalEarliestOperationStartTime()) + activityCosts.getActivityDuration(nextAct,nextActArrTime,newDriver,newVehicle);
             prevAct = nextAct;
             actIndex++;
-            if (breakThis) break;
         }
         if (insertionIndex == InsertionData.NO_INDEX) {
             return InsertionData.createEmptyInsertionData();

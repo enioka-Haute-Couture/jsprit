@@ -56,7 +56,7 @@ class InsertionDataUpdater {
 
     static VehicleRoute findRoute(Collection<VehicleRoute> routes, Job job) {
         for(VehicleRoute r : routes){
-            if(r.getVehicle().getBreak() == job) return r;
+            if(r.getVehicle().getBreaks() != null &&  r.getVehicle().getBreaks().contains(job)) return r;
         }
         return null;
     }

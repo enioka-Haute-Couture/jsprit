@@ -22,7 +22,9 @@ import com.graphhopper.jsprit.core.problem.Location;
 import com.graphhopper.jsprit.core.problem.Skills;
 import com.graphhopper.jsprit.core.problem.job.Break;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 
 /**
@@ -88,7 +90,7 @@ public class VehicleImpl extends AbstractVehicle {
 
 
         @Override
-        public Break getBreak() {
+        public List<Break> getBreaks() {
             return null;
         }
 
@@ -123,7 +125,7 @@ public class VehicleImpl extends AbstractVehicle {
 
         private Location endLocation;
 
-        private Break aBreak;
+        private List<Break> breaks;
 
         private Object userData;
 
@@ -147,7 +149,7 @@ public class VehicleImpl extends AbstractVehicle {
             this.skills = baseVehicle.getSkills();
             this.startLocation = baseVehicle.getStartLocation();
             this.endLocation = baseVehicle.getEndLocation();
-            this.aBreak = baseVehicle.getBreak();
+            this.breaks = baseVehicle.getBreaks();
             this.userData = baseVehicle.getUserData();
         }
 
@@ -318,7 +320,15 @@ public class VehicleImpl extends AbstractVehicle {
         }
 
         public Builder setBreak(Break aBreak) {
-            this.aBreak = aBreak;
+            if (breaks == null) {
+                breaks = new ArrayList<>();
+            }
+            breaks.add(aBreak);
+            return this;
+        }
+
+        public Builder setBreaks(List<Break> breaks) {
+            this.breaks = breaks;
             return this;
         }
     }
@@ -360,7 +370,7 @@ public class VehicleImpl extends AbstractVehicle {
 
     private final Location startLocation;
 
-    private final Break aBreak;
+    private final List<Break> breaks;
 
     private VehicleImpl(Builder builder) {
         setUserData(builder.userData);
@@ -372,7 +382,7 @@ public class VehicleImpl extends AbstractVehicle {
         skills = builder.skills;
         endLocation = builder.endLocation;
         startLocation = builder.startLocation;
-        aBreak = builder.aBreak;
+        breaks = builder.breaks;
         //        setVehicleIdentifier(new VehicleTypeKey(type.getTypeId(),startLocation.getId(),endLocation.getId(),earliestDeparture,latestArrival,skills));
         setVehicleIdentifier(new VehicleTypeKey(type.getTypeId(), startLocation.getId(), endLocation.getId(), earliestDeparture, latestArrival, skills, returnToDepot));
     }
@@ -434,8 +444,8 @@ public class VehicleImpl extends AbstractVehicle {
     }
 
     @Override
-    public Break getBreak() {
-        return aBreak;
+    public List<Break> getBreaks() {
+        return breaks;
     }
 
     /* (non-Javadoc)
