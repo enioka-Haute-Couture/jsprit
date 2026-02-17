@@ -59,17 +59,18 @@ public class BreakScheduling2 implements InsertionStartsListener,JobInsertedList
             return;
         }
         for(Break aBreak : inRoute.getVehicle().getBreaks()){            
+            if (inRoute.getTourActivities().removeJob(aBreak)) {
+                logger.trace("ruin: {}", aBreak.getId());
+                stateManager.removed(aBreak, inRoute);
+            }
+        }  
+        stateManager.reCalculateStates(inRoute);
+        for(Break aBreak : inRoute.getVehicle().getBreaks()){            
             insertBreak(inRoute, aBreak);
         }       
     }
 
-    private void insertBreak(VehicleRoute route, Break aBreak) {
-        boolean removed = route.getTourActivities().removeJob(aBreak);
-        if (removed) {
-            logger.trace("ruin: {}", aBreak.getId());
-            stateManager.removed(aBreak, route);
-            stateManager.reCalculateStates(route);
-        }
+    private void insertBreak(VehicleRoute route, Break aBreak) {        
         if (route.getEnd().getArrTime() > aBreak.getTimeWindow().getEnd()) {
             InsertionData iData = breakInsertionCalculator.getInsertionData(route, aBreak, route.getVehicle(), route.getDepartureTime(), route.getDriver(), Double.MAX_VALUE);
             if(!(iData instanceof InsertionData.NoInsertionFound)){

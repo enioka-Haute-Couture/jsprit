@@ -141,14 +141,28 @@ final class BreakInsertionCalculator2 implements JobInsertionCostsCalculator {
             }
 
             // The break can be anywhere between prevAct and nextAct, represented by breakLocation which does not have precise coordinates.
-            Location breakLocation = Location.Builder.newInstance().setIndex(prevAct.getLocation().getIndex()).setId("break" + jobToInsert.getId()).build();
+            Location breakLocation = Location.Builder.newInstance()
+                .setIndex(prevAct.getLocation().getIndex()).setId("break" + jobToInsert.getId())
+                .setPreviousLocationId(prevAct.getLocation().getId())
+                .setNextLocationId(nextAct.getLocation().getId())
+                .build();
             
             breakAct2Insert.setTheoreticalEarliestOperationStartTime(breakToInsert.getTimeWindow().getStart());
             breakAct2Insert.setTheoreticalLatestOperationStartTime(breakToInsert.getTimeWindow().getEnd());
             breakAct2Insert.setLocation(breakLocation);
             
             // We try to insert the break as early as possible.
-            breakLocation.setTimeFromPreviousActivity(Math.max(0, breakToInsert.getTimeWindow().getStart() - prevAct.getEndTime()));
+            var firstInsertionPossible = Math.max(breakToInsert.getTimeWindow().getStart(), prevAct.getEndTime());
+            var lastInsertionPossible = Math.min(breakToInsert.getTimeWindow().getEnd(), nextAct.getArrTime());
+            if (lastInsertionPossible - firstInsertionPossible < breakToInsert.getServiceDuration() || firstInsertionPossible > nextAct.getArrTime()) {
+                // Not possible...
+                // This would be caught by constraints, but not before we computed a negative cost to insert...
+                prevAct = nextAct;
+                actIndex++;
+                continue;
+            }
+
+            breakLocation.setTimeFromPreviousActivity(Math.max(0, firstInsertionPossible - prevAct.getEndTime()));
             breakLocation.setTimeFromPreviousNonBreakActivity(breakLocation.getTimeFromPreviousActivity() + (prevAct.getLocation().getTimeFromPreviousNonBreakActivity() > 0 ? prevAct.getLocation().getTimeFromPreviousNonBreakActivity() : 0));
             if (breakLocation.getTimeFromPreviousActivity() > 1) {
                 // If the break is not inserted immediately after prevAct, we need to calculate the distance to break (simply proportional to the time to break).
@@ -166,8 +180,13 @@ final class BreakInsertionCalculator2 implements JobInsertionCostsCalculator {
                 //from job2insert induced costs at activity level
                 double additionalICostsAtActLevel = softActivityConstraint.getCosts(insertionContext, prevAct, breakAct2Insert, nextAct, prevActStartTime);
                 double additionalTransportationCosts = additionalTransportCostsCalculator.getCosts(insertionContext, prevAct, nextAct, breakAct2Insert, prevActStartTime);
-                if (additionalICostsAtRouteLevel + additionalICostsAtActLevel + additionalTransportationCosts < bestCost) {
-                    bestCost = additionalICostsAtRouteLevel + additionalICostsAtActLevel + additionalTransportationCosts;
+
+                // We need to encourage inserting the break on without additional waits, i.e. on an existing road segment.
+                var timeBetweenPrevAndNext = transportCosts.getTransportTime(prevAct.getLocation(), nextAct.getLocation(), prevActStartTime, newDriver, newVehicle);;
+                var timeBeforeBreak =  breakLocation.getTimeFromPreviousNonBreakActivity();
+                double additionalActivityCosts = Math.max(0, timeBeforeBreak - timeBetweenPrevAndNext) * newVehicle.getType().getVehicleCostParams().perWaitingTimeUnit;
+                if (additionalICostsAtRouteLevel + additionalICostsAtActLevel + additionalTransportationCosts + additionalActivityCosts< bestCost) {
+                    bestCost = additionalICostsAtRouteLevel + additionalICostsAtActLevel + additionalTransportationCosts + additionalActivityCosts;
                     insertionIndex = actIndex;
                     // We need to copy the breakLocation as it is modified in each iteration of the loop.
                     bestLocation  = Location.Builder.newInstance()
@@ -177,6 +196,8 @@ final class BreakInsertionCalculator2 implements JobInsertionCostsCalculator {
                         .setTimeFromPreviousNonBreakActivity(breakLocation.getTimeFromPreviousNonBreakActivity())
                         .setDistanceFromPreviousActivity(breakLocation.getDistanceFromPreviousActivity())
                         .setDistanceFromPreviousNonBreakActivity(breakLocation.getDistanceFromPreviousNonBreakActivity())
+                        .setPreviousLocationId(breakLocation.getPreviousLocationId())
+                        .setNextLocationId(breakLocation.getNextLocationId())
                         .setCoordinate(prevAct.getLocation().getCoordinate()).build();
                 }
             } 

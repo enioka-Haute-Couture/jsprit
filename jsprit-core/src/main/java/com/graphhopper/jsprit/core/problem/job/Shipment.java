@@ -96,6 +96,8 @@ public class Shipment extends AbstractJob {
 
         private Activity delivery;
 
+        private double externalFixedCost = 0;
+
         /**
          * Returns new instance of this builder.
          *
@@ -377,6 +379,13 @@ public class Shipment extends AbstractJob {
             this.maxTimeInVehicle = maxTimeInVehicle;
             return this;
         }
+
+        public Builder setExternalFixedCost(double externalFixedCost){
+            if (externalFixedCost < 0)
+                throw new IllegalArgumentException("The cost of not doing the shipment must be positive.");
+            this.externalFixedCost = externalFixedCost;
+            return this;
+        }
     }
 
     private final String id;
@@ -403,6 +412,8 @@ public class Shipment extends AbstractJob {
 
     private final double maxTimeInVehicle;
 
+    private final double externalFixedCost;
+
     private List<Activity> activities = new ArrayList<>();
 
     Shipment(Builder builder) {
@@ -419,6 +430,7 @@ public class Shipment extends AbstractJob {
         this.pickupTimeWindows = builder.pickupTimeWindows;
         this.priority = builder.priority;
         this.maxTimeInVehicle = builder.maxTimeInVehicle;
+        this.externalFixedCost = builder.externalFixedCost;
         activities.add(builder.pickup);
         activities.add(builder.delivery);
         activities = Collections.unmodifiableList(activities);
@@ -576,5 +588,9 @@ public class Shipment extends AbstractJob {
 
     public Type getJobType() {
         return Type.SHIPMENT;
+    }
+
+    public double getExternalFixedCost() {
+        return externalFixedCost;
     }
 }
