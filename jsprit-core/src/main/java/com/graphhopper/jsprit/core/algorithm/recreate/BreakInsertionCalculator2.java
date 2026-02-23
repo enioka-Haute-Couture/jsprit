@@ -148,15 +148,16 @@ final class BreakInsertionCalculator2 implements JobInsertionCostsCalculator {
                 .build();
             
             breakAct2Insert.setTheoreticalEarliestOperationStartTime(breakToInsert.getTimeWindow().getStart());
-            breakAct2Insert.setTheoreticalLatestOperationStartTime(breakToInsert.getTimeWindow().getEnd());
+            breakAct2Insert.setTheoreticalLatestOperationStartTime(breakToInsert.getTimeWindow().getEnd() - breakToInsert.getServiceDuration());
             breakAct2Insert.setLocation(breakLocation);
             
             // We try to insert the break as early as possible.
-            var firstInsertionPossible = Math.max(breakToInsert.getTimeWindow().getStart(), prevAct.getEndTime());
-            var lastInsertionPossible = Math.min(breakToInsert.getTimeWindow().getEnd(), nextAct.getArrTime());
-            if (lastInsertionPossible - firstInsertionPossible < breakToInsert.getServiceDuration() || firstInsertionPossible > nextAct.getArrTime()) {
-                // Not possible...
-                // This would be caught by constraints, but not before we computed a negative cost to insert...
+            var firstInsertionPossible = Math.max(breakToInsert.getTimeWindow().getStart(), prevAct.getTheoreticalEarliestOperationStartTime() + prevAct.getOperationTime());
+            var lastInsertionPossible = Math.min(breakToInsert.getTimeWindow().getEnd() - breakToInsert.getServiceDuration(), nextAct.getTheoreticalLatestOperationStartTime());
+            if (lastInsertionPossible - firstInsertionPossible < 0 || firstInsertionPossible > nextAct.getArrTime() || lastInsertionPossible < prevAct.getEndTime()) {
+                // Not possible!
+                // This would be not caught by constraints, as it could result in a negative cost to insert...
+                // ... and that negative cost would be selected as the best insertion!
                 prevAct = nextAct;
                 actIndex++;
                 continue;
@@ -182,10 +183,9 @@ final class BreakInsertionCalculator2 implements JobInsertionCostsCalculator {
                 double additionalTransportationCosts = additionalTransportCostsCalculator.getCosts(insertionContext, prevAct, nextAct, breakAct2Insert, prevActStartTime);
 
                 // We need to encourage inserting the break on without additional waits, i.e. on an existing road segment.
-                var timeBetweenPrevAndNext = transportCosts.getTransportTime(prevAct.getLocation(), nextAct.getLocation(), prevActStartTime, newDriver, newVehicle);;
-                var timeBeforeBreak =  breakLocation.getTimeFromPreviousNonBreakActivity();
-                double additionalActivityCosts = Math.max(0, timeBeforeBreak - timeBetweenPrevAndNext) * newVehicle.getType().getVehicleCostParams().perWaitingTimeUnit;
-                if (additionalICostsAtRouteLevel + additionalICostsAtActLevel + additionalTransportationCosts + additionalActivityCosts< bestCost) {
+                var minTimeLoss = Math.max(0, breakAct2Insert.getTheoreticalEarliestOperationStartTime() - nextAct.getTheoreticalEarliestOperationStartTime());
+                double additionalActivityCosts = minTimeLoss * newVehicle.getType().getVehicleCostParams().perWaitingTimeUnit;
+                if (additionalICostsAtRouteLevel + additionalICostsAtActLevel + additionalTransportationCosts + additionalActivityCosts < bestCost) {
                     bestCost = additionalICostsAtRouteLevel + additionalICostsAtActLevel + additionalTransportationCosts + additionalActivityCosts;
                     insertionIndex = actIndex;
                     // We need to copy the breakLocation as it is modified in each iteration of the loop.
