@@ -351,6 +351,248 @@ class StateManagerTest {
     }
 
     @Test
+    @DisplayName("Vehicle Dependent Activity States Can Be Cleared Repeatedly")
+    void vehicleDependentActivityStatesCanBeClearedRepeatedly() {
+        VehicleImpl vehicle = VehicleImpl.Builder.newInstance("v").setStartLocation(Location.newInstance("loc")).build();
+        VehicleImpl otherVehicle = VehicleImpl.Builder.newInstance("v2").setStartLocation(Location.newInstance("otherLoc")).build();
+        VehicleRoutingProblem vrp = VehicleRoutingProblem.Builder.newInstance().addVehicle(vehicle).addVehicle(otherVehicle).build();
+        StateManager stateManager = new StateManager(vrp);
+        TourActivity activity = mock(TourActivity.class);
+        when(activity.getIndex()).thenReturn(1);
+        TourActivity otherActivity = mock(TourActivity.class);
+        when(otherActivity.getIndex()).thenReturn(2);
+        StateId customState = stateManager.createStateId("customState");
+
+        stateManager.clear();
+        for (int iteration = 0; iteration < 3; iteration++) {
+            stateManager.putInternalTypedActivityState(activity, vehicle, InternalStates.COSTS, 1.);
+            stateManager.putInternalTypedActivityState(activity, vehicle, InternalStates.COSTS, 2.);
+            stateManager.putActivityState(activity, vehicle, customState, 3.);
+            stateManager.putActivityState(activity, otherVehicle, customState, 4.);
+            stateManager.putActivityState(otherActivity, vehicle, customState, 5.);
+            assertEquals(2., stateManager.getActivityState(activity, vehicle, InternalStates.COSTS, Double.class));
+            assertEquals(3., stateManager.getActivityState(activity, vehicle, customState, Double.class));
+            assertTrue(stateManager.hasActivityState(activity, vehicle, customState));
+            assertFalse(stateManager.hasActivityState(otherActivity, otherVehicle, customState));
+
+            stateManager.clear();
+            stateManager.clear();
+
+            assertNull(stateManager.getActivityState(activity, vehicle, InternalStates.COSTS, Double.class));
+            assertNull(stateManager.getActivityState(activity, vehicle, customState, Double.class));
+            assertNull(stateManager.getActivityState(activity, otherVehicle, customState, Double.class));
+            assertNull(stateManager.getActivityState(otherActivity, vehicle, customState, Double.class));
+            assertFalse(stateManager.hasActivityState(activity, vehicle, customState));
+        }
+    }
+
+    @Test
+    @DisplayName("Activity And Double States Can Be Cleared Repeatedly")
+    void activityAndDoubleStatesCanBeClearedRepeatedly() {
+        VehicleImpl vehicle = VehicleImpl.Builder.newInstance("v").setStartLocation(Location.newInstance("loc")).build();
+        VehicleImpl otherVehicle = VehicleImpl.Builder.newInstance("v2").setStartLocation(Location.newInstance("otherLoc")).build();
+        VehicleRoutingProblem vrp = VehicleRoutingProblem.Builder.newInstance().addVehicle(vehicle).addVehicle(otherVehicle).build();
+        StateManager stateManager = new StateManager(vrp);
+        TourActivity activity = mock(TourActivity.class);
+        when(activity.getIndex()).thenReturn(1);
+        TourActivity otherActivity = mock(TourActivity.class);
+        when(otherActivity.getIndex()).thenReturn(2);
+        StateId objectState = stateManager.createStateId("objectState");
+        StateId doubleState = stateManager.createStateId("doubleState");
+
+        for (int iteration = 0; iteration < 3; iteration++) {
+            // Not the same activities at each iteration: only rows written since the last clear are reset.
+            TourActivity written = iteration % 2 == 0 ? activity : otherActivity;
+            TourActivity notWritten = iteration % 2 == 0 ? otherActivity : activity;
+            stateManager.putActivityState(written, objectState, "o" + iteration);
+            stateManager.putActivityStateDouble(written, doubleState, iteration);
+            stateManager.putInternalTypesActivityStateDouble(written, vehicle, doubleState, 10. + iteration);
+            assertEquals("o" + iteration, stateManager.getActivityState(written, objectState, String.class));
+            assertEquals(iteration, stateManager.getActivityStateDouble(written, doubleState, -1.), 0.);
+            assertEquals(10. + iteration, stateManager.getActivityStateDouble(written, vehicle, doubleState, -1.), 0.);
+            assertEquals(-1., stateManager.getActivityStateDouble(written, otherVehicle, doubleState, -1.), 0.);
+            assertNull(stateManager.getActivityState(notWritten, objectState, String.class));
+            assertFalse(stateManager.hasActivityStateDouble(notWritten, doubleState));
+
+            stateManager.clear();
+            stateManager.clear();
+
+            assertNull(stateManager.getActivityState(written, objectState, String.class));
+            assertFalse(stateManager.hasActivityStateDouble(written, doubleState));
+            assertFalse(stateManager.hasActivityStateDouble(written, vehicle, doubleState));
+            assertEquals(-1., stateManager.getActivityStateDouble(written, doubleState, -1.), 0.);
+        }
+    }
+
+    @Test
+    @DisplayName("Vehicle Dependent Activity States Can Be Cleared After Resizing")
+    void vehicleDependentActivityStatesCanBeClearedAfterResizing() {
+        VehicleImpl vehicle = VehicleImpl.Builder.newInstance("v").setStartLocation(Location.newInstance("loc")).build();
+        VehicleRoutingProblem vrp = VehicleRoutingProblem.Builder.newInstance().addVehicle(vehicle).build();
+        StateManager stateManager = new StateManager(vrp);
+        TourActivity activity = mock(TourActivity.class);
+        when(activity.getIndex()).thenReturn(1);
+        StateId originalState = stateManager.createStateId("originalState");
+        stateManager.putActivityState(activity, vehicle, originalState, 1.);
+
+        StateId expandedState = null;
+        for (int stateNumber = 0; stateNumber < 10; stateNumber++) {
+            expandedState = stateManager.createStateId("expandedState" + stateNumber);
+        }
+        stateManager.putActivityState(activity, vehicle, originalState, 2.);
+        stateManager.putActivityState(activity, vehicle, expandedState, 3.);
+        assertEquals(2., stateManager.getActivityState(activity, vehicle, originalState, Double.class));
+        assertEquals(3., stateManager.getActivityState(activity, vehicle, expandedState, Double.class));
+
+        stateManager.clear();
+
+        assertNull(stateManager.getActivityState(activity, vehicle, originalState, Double.class));
+        assertNull(stateManager.getActivityState(activity, vehicle, expandedState, Double.class));
+        assertFalse(stateManager.hasActivityState(activity, vehicle, expandedState));
+    }
+
+    @Test
+    @DisplayName("Null Vehicle Dependent Activity States Can Be Rewritten And Cleared")
+    void nullVehicleDependentActivityStatesCanBeRewrittenAndCleared() {
+        VehicleImpl vehicle = VehicleImpl.Builder.newInstance("v").setStartLocation(Location.newInstance("loc")).build();
+        VehicleRoutingProblem vrp = VehicleRoutingProblem.Builder.newInstance().addVehicle(vehicle).build();
+        StateManager stateManager = new StateManager(vrp);
+        TourActivity activity = mock(TourActivity.class);
+        when(activity.getIndex()).thenReturn(1);
+        StateId stateId = stateManager.createStateId("customState");
+
+        stateManager.putActivityState(activity, vehicle, stateId, null);
+        assertFalse(stateManager.hasActivityState(activity, vehicle, stateId));
+        stateManager.putActivityState(activity, vehicle, stateId, 1.);
+        stateManager.putActivityState(activity, vehicle, stateId, null);
+        stateManager.putActivityState(activity, vehicle, stateId, 2.);
+        assertEquals(2., stateManager.getActivityState(activity, vehicle, stateId, Double.class));
+
+        stateManager.clear();
+
+        assertNull(stateManager.getActivityState(activity, vehicle, stateId, Double.class));
+        assertFalse(stateManager.hasActivityState(activity, vehicle, stateId));
+    }
+
+    @Test
+    @DisplayName("Double Activity States Preserve Values And Clear Without Sentinels")
+    void doubleActivityStatesPreserveValuesAndClearWithoutSentinels() {
+        VehicleImpl vehicle = VehicleImpl.Builder.newInstance("v").setStartLocation(Location.newInstance("loc")).build();
+        VehicleImpl otherVehicle = VehicleImpl.Builder.newInstance("v2").setStartLocation(Location.newInstance("otherLoc")).build();
+        StateManager stateManager = new StateManager(VehicleRoutingProblem.Builder.newInstance().addVehicle(vehicle).addVehicle(otherVehicle).build());
+        TourActivity activity = mock(TourActivity.class);
+        when(activity.getIndex()).thenReturn(1);
+        TourActivity otherActivity = mock(TourActivity.class);
+        when(otherActivity.getIndex()).thenReturn(2);
+        StateId stateId = InternalStates.LATEST_OPERATION_START_TIME;
+
+        double[] times = {0., -0., 42., Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NaN};
+        for (double time : times) {
+            assertEquals(-1., stateManager.getActivityStateDouble(activity, stateId, -1.));
+            assertEquals(-1., stateManager.getActivityStateDouble(activity, vehicle, stateId, -1.));
+            stateManager.putInternalTypesActivityStateDouble(activity, stateId, time);
+            stateManager.putInternalTypesActivityStateDouble(activity, vehicle, stateId, time);
+            assertEquals(time, stateManager.getActivityStateDouble(activity, stateId, -1.));
+            assertEquals(time, stateManager.getActivityStateDouble(activity, vehicle, stateId, -1.));
+            assertTrue(stateManager.hasActivityStateDouble(activity, stateId));
+            assertTrue(stateManager.hasActivityStateDouble(activity, vehicle, stateId));
+            assertFalse(stateManager.hasActivityStateDouble(activity, otherVehicle, stateId));
+            assertEquals(-1., stateManager.getActivityStateDouble(activity, otherVehicle, stateId, -1.));
+            assertEquals(-1., stateManager.getActivityStateDouble(otherActivity, vehicle, stateId, -1.));
+
+            stateManager.clear();
+            stateManager.clear();
+
+            assertEquals(-1., stateManager.getActivityStateDouble(activity, stateId, -1.));
+            assertEquals(-1., stateManager.getActivityStateDouble(activity, vehicle, stateId, -1.));
+            assertFalse(stateManager.hasActivityStateDouble(activity, stateId));
+            assertFalse(stateManager.hasActivityStateDouble(activity, vehicle, stateId));
+        }
+    }
+
+    @Test
+    @DisplayName("Double Activity States Are Independent Of Object States And Other State IDs")
+    void doubleActivityStatesAreIndependentOfObjectStatesAndOtherStateIds() {
+        VehicleImpl vehicle = VehicleImpl.Builder.newInstance("v").setStartLocation(Location.newInstance("loc")).build();
+        StateManager stateManager = new StateManager(VehicleRoutingProblem.Builder.newInstance().addVehicle(vehicle).build());
+        TourActivity activity = mock(TourActivity.class);
+        when(activity.getIndex()).thenReturn(1);
+        StateId stateId = stateManager.createStateId("doubleState");
+        StateId otherStateId = stateManager.createStateId("otherDoubleState");
+
+        stateManager.putInternalTypesActivityStateDouble(activity, stateId, 10.);
+        stateManager.putInternalTypesActivityStateDouble(activity, vehicle, stateId, 20.);
+        stateManager.putInternalTypesActivityStateDouble(activity, otherStateId, 30.);
+        stateManager.putInternalTypesActivityStateDouble(activity, vehicle, otherStateId, 40.);
+        assertNull(stateManager.getActivityState(activity, stateId, Double.class));
+        assertNull(stateManager.getActivityState(activity, vehicle, stateId, Double.class));
+        assertFalse(stateManager.hasActivityState(activity, vehicle, stateId));
+
+        stateManager.putActivityState(activity, stateId, "object state");
+        stateManager.putActivityState(activity, vehicle, stateId, 50.);
+        assertEquals("object state", stateManager.getActivityState(activity, stateId, String.class));
+        assertEquals(50., stateManager.getActivityState(activity, vehicle, stateId, Double.class));
+        assertEquals(10., stateManager.getActivityStateDouble(activity, stateId, -1.));
+        assertEquals(20., stateManager.getActivityStateDouble(activity, vehicle, stateId, -1.));
+        assertEquals(30., stateManager.getActivityStateDouble(activity, otherStateId, -1.));
+        assertEquals(40., stateManager.getActivityStateDouble(activity, vehicle, otherStateId, -1.));
+
+        stateManager.putInternalTypesActivityStateDouble(activity, stateId, 60.);
+        stateManager.putInternalTypesActivityStateDouble(activity, vehicle, stateId, 70.);
+        assertEquals(60., stateManager.getActivityStateDouble(activity, stateId, -1.));
+        assertEquals(70., stateManager.getActivityStateDouble(activity, vehicle, stateId, -1.));
+        assertEquals("object state", stateManager.getActivityState(activity, stateId, String.class));
+        assertEquals(50., stateManager.getActivityState(activity, vehicle, stateId, Double.class));
+    }
+
+    @Test
+    @DisplayName("Double Activity States Follow Existing Resize Reset Behavior")
+    void doubleActivityStatesFollowExistingResizeResetBehavior() {
+        VehicleImpl vehicle = VehicleImpl.Builder.newInstance("v").setStartLocation(Location.newInstance("loc")).build();
+        StateManager stateManager = new StateManager(VehicleRoutingProblem.Builder.newInstance().addVehicle(vehicle).build());
+        TourActivity activity = mock(TourActivity.class);
+        when(activity.getIndex()).thenReturn(1);
+        StateId stateId = InternalStates.LATEST_OPERATION_START_TIME;
+        stateManager.putInternalTypesActivityStateDouble(activity, stateId, 10.);
+        stateManager.putInternalTypesActivityStateDouble(activity, vehicle, stateId, 20.);
+
+        StateId expandedStateId = null;
+        for (int stateNumber = 0; stateNumber < 10; stateNumber++) {
+            expandedStateId = stateManager.createStateId("expandedState" + stateNumber);
+        }
+
+        assertEquals(-1., stateManager.getActivityStateDouble(activity, stateId, -1.));
+        assertEquals(-1., stateManager.getActivityStateDouble(activity, vehicle, stateId, -1.));
+        stateManager.putInternalTypesActivityStateDouble(activity, expandedStateId, 30.);
+        stateManager.putInternalTypesActivityStateDouble(activity, vehicle, expandedStateId, 40.);
+        assertEquals(30., stateManager.getActivityStateDouble(activity, expandedStateId, -1.));
+        assertEquals(40., stateManager.getActivityStateDouble(activity, vehicle, expandedStateId, -1.));
+        stateManager.clear();
+        assertEquals(-1., stateManager.getActivityStateDouble(activity, expandedStateId, -1.));
+        assertEquals(-1., stateManager.getActivityStateDouble(activity, vehicle, expandedStateId, -1.));
+    }
+
+    @Test
+    @DisplayName("Double Activity States Handle Unindexed And Depot Activities")
+    void doubleActivityStatesHandleUnindexedAndDepotActivities() {
+        StateManager stateManager = new StateManager(vrpMock);
+        TourActivity activity = mock(TourActivity.class);
+        Vehicle vehicle = mock(Vehicle.class);
+        StateId stateId = InternalStates.LATEST_OPERATION_START_TIME;
+        assertThrows(IllegalStateException.class, () -> stateManager.putInternalTypesActivityStateDouble(activity, stateId, 1.));
+        assertThrows(IllegalStateException.class, () -> stateManager.putInternalTypesActivityStateDouble(activity, vehicle, stateId, 1.));
+        assertThrows(IllegalStateException.class, () -> stateManager.getActivityStateDouble(activity, stateId, -1.));
+        assertThrows(IllegalStateException.class, () -> stateManager.getActivityStateDouble(activity, vehicle, stateId, -1.));
+        for (int activityIndex : new int[]{-1, -2}) {
+            when(activity.getIndex()).thenReturn(activityIndex);
+            assertEquals(123., stateManager.getActivityStateDouble(activity, stateId, 123.));
+            assertEquals(123., stateManager.getActivityStateDouble(activity, vehicle, stateId, 123.));
+            assertFalse(stateManager.hasActivityStateDouble(activity, stateId));
+            assertFalse(stateManager.hasActivityStateDouble(activity, vehicle, stateId));
+        }
+    }
+
+    @Test
     @DisplayName("Array Ini Should Work")
     void arrayIniShouldWork() {
         VehicleType type = VehicleTypeImpl.Builder.newInstance("t").setCostPerDistance(4.).build();

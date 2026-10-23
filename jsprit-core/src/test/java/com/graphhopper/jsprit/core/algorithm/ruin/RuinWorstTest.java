@@ -18,18 +18,26 @@
 package com.graphhopper.jsprit.core.algorithm.ruin;
 
 import com.graphhopper.jsprit.core.problem.Location;
+import com.graphhopper.jsprit.core.problem.driver.DriverImpl;
 import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
 import com.graphhopper.jsprit.core.problem.job.Job;
 import com.graphhopper.jsprit.core.problem.job.Service;
 import com.graphhopper.jsprit.core.problem.job.Shipment;
 import com.graphhopper.jsprit.core.problem.solution.route.VehicleRoute;
+import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
 import com.graphhopper.jsprit.core.util.Coordinate;
+import com.graphhopper.jsprit.core.util.NoiseMaker;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -163,5 +171,138 @@ class RuinWorstTest {
         assertTrue(unassigned.size() == 2);
         assertTrue(unassigned.contains(shipment));
         assertTrue(unassigned.contains(s3));
+    }
+
+    @Test
+    @DisplayName("It Should Remove The Same Jobs As A Full Recomputation After Each Removal")
+    void itShouldRemoveTheSameJobsAsAFullRecomputation() {
+        Random random = new Random(42);
+        VehicleRoutingProblem.Builder builder = VehicleRoutingProblem.Builder.newInstance();
+        List<VehicleImpl> vehicles = new ArrayList<>();
+        for (int v = 0; v < 4; v++) {
+            VehicleImpl vehicle = VehicleImpl.Builder.newInstance("v" + v)
+                .setStartLocation(Location.Builder.newInstance().setCoordinate(Coordinate.newInstance(50, 50)).build()).build();
+            vehicles.add(vehicle);
+            builder.addVehicle(vehicle);
+        }
+        List<Service> services = new ArrayList<>();
+        for (int i = 0; i < 40; i++) {
+            Service service = Service.Builder.newInstance("s" + i).setLocation(Location.Builder.newInstance()
+                .setCoordinate(Coordinate.newInstance(random.nextDouble() * 100, random.nextDouble() * 100)).build()).build();
+            services.add(service);
+            builder.addJob(service);
+        }
+        VehicleRoutingProblem vrp = builder.build();
+
+        RuinWorst worst = new RuinWorst(vrp, 15);
+        Collection<Job> unassigned = worst.ruinRoutes(buildRoutes(vrp, vehicles, services));
+
+        List<Job> expected = fullRecomputation(vrp, buildRoutes(vrp, vehicles, services), 15, () -> 0);
+        assertEquals(expected, new ArrayList<>(unassigned));
+    }
+
+    @Test
+    @DisplayName("It Should Behave Like A Full Recomputation When Noise Dominates")
+    void itShouldBehaveLikeAFullRecomputationWhenNoiseDominates() {
+        // Noise as configured by Jsprit (20% chance, up to 15% of the max costs), much larger than savings. The
+        // noise must be drawn again for all jobs before each removal: drawing it once per route computation makes
+        // the ruin keep removing jobs from the route it just changed, and remove jobs with much lower savings.
+        Random random = new Random(1);
+        VehicleRoutingProblem.Builder builder = VehicleRoutingProblem.Builder.newInstance();
+        List<VehicleImpl> vehicles = new ArrayList<>();
+        for (int v = 0; v < 16; v++) {
+            VehicleImpl vehicle = VehicleImpl.Builder.newInstance("v" + v)
+                .setStartLocation(Location.Builder.newInstance().setCoordinate(Coordinate.newInstance(500, 500)).build()).build();
+            vehicles.add(vehicle);
+            builder.addVehicle(vehicle);
+        }
+        List<Service> services = new ArrayList<>();
+        for (int i = 0; i < 400; i++) {
+            Service service = Service.Builder.newInstance("s" + i).setLocation(Location.Builder.newInstance()
+                .setCoordinate(Coordinate.newInstance(random.nextDouble() * 1000, random.nextDouble() * 1000)).build()).build();
+            services.add(service);
+            builder.addJob(service);
+        }
+        VehicleRoutingProblem vrp = builder.build();
+
+        int runs = 200;
+        int toRemove = 30;
+        double[] removedSavings = new double[2];
+        Random noiseRandom = new Random(99);
+        NoiseMaker noise = () -> noiseRandom.nextDouble() < 0.2 ? 0.15 * 100_000 * noiseRandom.nextDouble() : 0.;
+        for (int version = 0; version < 2; version++) {
+            for (int run = 0; run < runs; run++) {
+                List<VehicleRoute> routes = buildRoutes(vrp, vehicles, services);
+                Map<Job, Double> savingsBefore = new HashMap<>();
+                for (VehicleRoute route : routes) {
+                    List<TourActivity> acts = new ArrayList<>(route.getActivities());
+                    for (int i = 0; i < acts.size(); i++) {
+                        savingsBefore.put(((TourActivity.JobActivity) acts.get(i)).getJob(), savings(vrp, route, acts, i));
+                    }
+                }
+                Collection<Job> removed;
+                if (version == 0) {
+                    removed = fullRecomputation(vrp, routes, toRemove, noise);
+                } else {
+                    RuinWorst worst = new RuinWorst(vrp, toRemove);
+                    worst.setNoiseMaker(noise);
+                    removed = worst.ruinRoutes(routes);
+                }
+                for (Job job : removed) {
+                    removedSavings[version] += savingsBefore.get(job) / runs / toRemove;
+                }
+            }
+        }
+        assertEquals(removedSavings[0], removedSavings[1], removedSavings[0] * 0.05,
+            "mean savings of removed jobs: full recomputation " + removedSavings[0] + ", RuinWorst " + removedSavings[1]);
+    }
+
+    /**
+     * Reference: the previous algorithm, recomputing the savings (with noise) of all routes before each removal.
+     */
+    private static List<Job> fullRecomputation(VehicleRoutingProblem vrp, List<VehicleRoute> routes, int toRemove, NoiseMaker noise) {
+        List<Job> removed = new ArrayList<>();
+        for (int removal = 0; removal < toRemove; removal++) {
+            Job worstJob = null;
+            VehicleRoute worstRoute = null;
+            double bestSavings = Double.MIN_VALUE;
+            for (VehicleRoute route : routes) {
+                List<TourActivity> acts = new ArrayList<>(route.getActivities());
+                for (int i = 0; i < acts.size(); i++) {
+                    double savings = Math.max(0, savings(vrp, route, acts, i) + noise.makeNoise());
+                    if (savings > bestSavings) {
+                        bestSavings = savings;
+                        worstJob = ((TourActivity.JobActivity) acts.get(i)).getJob();
+                        worstRoute = route;
+                    }
+                }
+            }
+            worstRoute.getTourActivities().removeJob(worstJob);
+            removed.add(worstJob);
+        }
+        return removed;
+    }
+
+    private static double savings(VehicleRoutingProblem vrp, VehicleRoute route, List<TourActivity> acts, int i) {
+        TourActivity before = i == 0 ? route.getStart() : acts.get(i - 1);
+        TourActivity after = i == acts.size() - 1 ? route.getEnd() : acts.get(i + 1);
+        return c(vrp, route, before, acts.get(i)) + c(vrp, route, acts.get(i), after) - c(vrp, route, before, after);
+    }
+
+    private static List<VehicleRoute> buildRoutes(VehicleRoutingProblem vrp, List<VehicleImpl> vehicles, List<Service> services) {
+        List<VehicleRoute> routes = new ArrayList<>();
+        for (int v = 0; v < vehicles.size(); v++) {
+            VehicleRoute.Builder route = VehicleRoute.Builder.newInstance(vehicles.get(v)).setJobActivityFactory(vrp.getJobActivityFactory());
+            for (int i = v; i < services.size(); i += vehicles.size()) {
+                route.addService(services.get(i));
+            }
+            routes.add(route.build());
+        }
+        return routes;
+    }
+
+    private static double c(VehicleRoutingProblem vrp, VehicleRoute route, TourActivity from, TourActivity to) {
+        return vrp.getTransportCosts().getTransportCost(from.getLocation(), to.getLocation(), from.getEndTime(),
+            DriverImpl.noDriver(), route.getVehicle());
     }
 }

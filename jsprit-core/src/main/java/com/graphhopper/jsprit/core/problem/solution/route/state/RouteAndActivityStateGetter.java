@@ -24,6 +24,11 @@ import com.graphhopper.jsprit.core.problem.vehicle.Vehicle;
 
 public interface RouteAndActivityStateGetter {
 
+    /** Returns a primitive double state, or defaultValue if unset, independently of object states. */
+    double getActivityStateDouble(TourActivity act, StateId stateId, double defaultValue);
+
+    /** Returns a vehicle-dependent primitive double state, or defaultValue if unset. */
+    double getActivityStateDouble(TourActivity act, Vehicle vehicle, StateId stateId, double defaultValue);
 
     public <T> T getActivityState(TourActivity act, StateId stateId, Class<T> type);
 

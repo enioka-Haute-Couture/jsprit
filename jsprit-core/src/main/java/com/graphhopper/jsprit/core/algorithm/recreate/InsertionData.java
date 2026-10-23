@@ -72,7 +72,7 @@ public class InsertionData {
 
     private List<Event> events = new ArrayList<Event>();
 
-    List<Event> getEvents() {
+    public List<Event> getEvents() {
         return events;
     }
 

@@ -79,6 +79,58 @@ public class StateManager implements RouteAndActivityStateGetter, IterationStart
 
     private Object[][][] vehicleDependentActivityStates;
 
+    private double[][] activityStatesDouble;
+
+    private double[][][] vehicleDependentActivityStatesDouble;
+
+    private final BitSet activityStatesDoublePresent = new BitSet();
+
+    private final BitSet vehicleDependentActivityStatesDoublePresent = new BitSet();
+
+    private final BitSet dirtyVehicleDependentActivityRows = new BitSet();
+
+    private final List<Object[]> dirtyVehicleDependentActivityStateRows = new ArrayList<>();
+
+    /** Activities whose object states were written since the last clear. */
+    private final DirtyRows dirtyActivityStateRows = new DirtyRows();
+
+    /** Activities whose double states were written since the last clear. */
+    private final DirtyRows dirtyActivityStateDoubleRows = new DirtyRows();
+
+    /** (activity, vehicle type) rows whose double states were written since the last clear. */
+    private final DirtyRows dirtyVehicleDependentActivityStateDoubleRows = new DirtyRows();
+
+    /**
+     * Rows written since the last {@link #clear()}, so that it only resets those instead of all the states of all
+     * the activities of the problem (done at each iteration).
+     */
+    private static final class DirtyRows {
+        private final BitSet marked = new BitSet();
+        private int[] rows = new int[64];
+        private int size;
+
+        void mark(int row) {
+            if (!marked.get(row)) {
+                marked.set(row);
+                if (size == rows.length) rows = Arrays.copyOf(rows, size * 2);
+                rows[size++] = row;
+            }
+        }
+
+        int size() {
+            return size;
+        }
+
+        int get(int i) {
+            return rows[i];
+        }
+
+        void reset() {
+            for (int i = 0; i < size; i++) marked.clear(rows[i]);
+            size = 0;
+        }
+    }
+
     private final Map<VehicleRoute, Object[]> routeStateMap;
 
     private final Map<VehicleRoute, Object[][]> vehicleDependentRouteStateMap;
@@ -110,6 +162,15 @@ public class StateManager implements RouteAndActivityStateGetter, IterationStart
         if (stateIndexCounter >= activityStates[0].length) {
             activityStates = new Object[nuActivities][stateIndexCounter + 1];
             vehicleDependentActivityStates = new Object[nuActivities][nuVehicleTypeKeys][stateIndexCounter + 1];
+            dirtyVehicleDependentActivityRows.clear();
+            dirtyVehicleDependentActivityStateRows.clear();
+            activityStatesDouble = new double[nuActivities][];
+            vehicleDependentActivityStatesDouble = new double[nuActivities][nuVehicleTypeKeys][];
+            activityStatesDoublePresent.clear();
+            vehicleDependentActivityStatesDoublePresent.clear();
+            dirtyActivityStateRows.reset();
+            dirtyActivityStateDoubleRows.reset();
+            dirtyVehicleDependentActivityStateDoubleRows.reset();
             routeStatesArr = new Object[vrp.getVehicles().size() + 2][stateIndexCounter + 1];
             vehicleDependentRouteStatesArr = new Object[vrp.getVehicles().size() + 2][nuVehicleTypeKeys][stateIndexCounter + 1];
             problemStates = new Object[stateIndexCounter + 1];
@@ -138,6 +199,8 @@ public class StateManager implements RouteAndActivityStateGetter, IterationStart
         nuVehicleTypeKeys = Math.max(3, getNuVehicleTypes(vrp) + 2);
         activityStates = new Object[nuActivities][initialStateArrayLength];
         vehicleDependentActivityStates = new Object[nuActivities][nuVehicleTypeKeys][initialStateArrayLength];
+        activityStatesDouble = new double[nuActivities][];
+        vehicleDependentActivityStatesDouble = new double[nuActivities][nuVehicleTypeKeys][];
         isIndexedBased = false;
         routeStateMap = new HashMap<>();
         vehicleDependentRouteStateMap = new HashMap<>();
@@ -182,8 +245,26 @@ public class StateManager implements RouteAndActivityStateGetter, IterationStart
      * Clears all states, i.e. set all value to null.
      */
     public void clear() {
-        fill_twoDimArr(activityStates, null);
-        fill_threeDimArr(vehicleDependentActivityStates, null);
+        int stateCount = activityStates[0].length;
+        for (int i = 0; i < dirtyActivityStateDoubleRows.size(); i++) {
+            int row = dirtyActivityStateDoubleRows.get(i);
+            activityStatesDoublePresent.clear(row * stateCount, (row + 1) * stateCount);
+        }
+        dirtyActivityStateDoubleRows.reset();
+        for (int i = 0; i < dirtyVehicleDependentActivityStateDoubleRows.size(); i++) {
+            int row = dirtyVehicleDependentActivityStateDoubleRows.get(i);
+            vehicleDependentActivityStatesDoublePresent.clear(row * stateCount, (row + 1) * stateCount);
+        }
+        dirtyVehicleDependentActivityStateDoubleRows.reset();
+        for (int i = 0; i < dirtyActivityStateRows.size(); i++) {
+            Arrays.fill(activityStates[dirtyActivityStateRows.get(i)], null);
+        }
+        dirtyActivityStateRows.reset();
+        for (Object[] row : dirtyVehicleDependentActivityStateRows) {
+            Arrays.fill(row, null);
+        }
+        dirtyVehicleDependentActivityStateRows.clear();
+        dirtyVehicleDependentActivityRows.clear();
         if (isIndexedBased) {
             fill_twoDimArr(routeStatesArr, null);
             fill_threeDimArr(vehicleDependentRouteStatesArr, null);
@@ -410,12 +491,90 @@ public class StateManager implements RouteAndActivityStateGetter, IterationStart
         putInternalTypedActivityState(act, vehicle, stateId, state);
     }
 
+    /**
+     * Same as {@link #putActivityState(TourActivity, StateId, Object)} for a primitive double, without boxing.
+     * Read it with {@link #getActivityStateDouble(TourActivity, StateId, double)}.
+     */
+    public void putActivityStateDouble(TourActivity act, StateId stateId, double state) {
+        if (stateId.getIndex() < initialNoStates)
+            throw new IllegalStateException("reserved stateId " + stateId + " - use stateManager.createStateId(name)");
+        putInternalTypesActivityStateDouble(act, stateId, state);
+    }
+
+    void putInternalTypesActivityStateDouble(TourActivity act, StateId stateId, double state) {
+        int activityIndex = act.getIndex();
+        if (activityIndex == 0) throw new IllegalStateException("activity index is 0. this should not be.");
+        double[] row = activityStatesDouble[activityIndex];
+        if (row == null) {
+            row = new double[activityStates[0].length];
+            activityStatesDouble[activityIndex] = row;
+        }
+        row[stateId.getIndex()] = state;
+        activityStatesDoublePresent.set(activityIndex * activityStates[0].length + stateId.getIndex());
+        dirtyActivityStateDoubleRows.mark(activityIndex);
+    }
+
+    void putInternalTypesActivityStateDouble(TourActivity act, Vehicle vehicle, StateId stateId, double state) {
+        int activityIndex = act.getIndex();
+        if (activityIndex == 0) throw new IllegalStateException("activity index is 0. this should not be.");
+        int vehicleTypeIndex = vehicle.getVehicleTypeIdentifier().getIndex();
+        double[] row = vehicleDependentActivityStatesDouble[activityIndex][vehicleTypeIndex];
+        if (row == null) {
+            row = new double[activityStates[0].length];
+            vehicleDependentActivityStatesDouble[activityIndex][vehicleTypeIndex] = row;
+        }
+        row[stateId.getIndex()] = state;
+        int rowIndex = activityIndex * nuVehicleTypeKeys + vehicleTypeIndex;
+        vehicleDependentActivityStatesDoublePresent.set(rowIndex * activityStates[0].length + stateId.getIndex());
+        dirtyVehicleDependentActivityStateDoubleRows.mark(rowIndex);
+    }
+
+    @Override
+    public double getActivityStateDouble(TourActivity act, StateId stateId, double defaultValue) {
+        int activityIndex = act.getIndex();
+        if (activityIndex == 0) throw new IllegalStateException("activity index is 0. this should not be.");
+        if (activityIndex < 0) return defaultValue;
+        if (!activityStatesDoublePresent.get(activityIndex * activityStates[0].length + stateId.getIndex())) return defaultValue;
+        return activityStatesDouble[activityIndex][stateId.getIndex()];
+    }
+
+    @Override
+    public double getActivityStateDouble(TourActivity act, Vehicle vehicle, StateId stateId, double defaultValue) {
+        int activityIndex = act.getIndex();
+        if (activityIndex == 0) throw new IllegalStateException("activity index is 0. this should not be.");
+        if (activityIndex < 0) return defaultValue;
+        int vehicleTypeIndex = vehicle.getVehicleTypeIdentifier().getIndex();
+        if (!vehicleDependentActivityStatesDoublePresent.get((activityIndex * nuVehicleTypeKeys + vehicleTypeIndex) * activityStates[0].length + stateId.getIndex())) return defaultValue;
+        return vehicleDependentActivityStatesDouble[activityIndex][vehicleTypeIndex][stateId.getIndex()];
+    }
+
+    public boolean hasActivityStateDouble(TourActivity act, StateId stateId) {
+        int activityIndex = act.getIndex();
+        if (activityIndex == 0) throw new IllegalStateException("activity index is 0. this should not be.");
+        return activityIndex > 0 && activityStatesDoublePresent.get(activityIndex * activityStates[0].length + stateId.getIndex());
+    }
+
+    public boolean hasActivityStateDouble(TourActivity act, Vehicle vehicle, StateId stateId) {
+        int activityIndex = act.getIndex();
+        if (activityIndex == 0) throw new IllegalStateException("activity index is 0. this should not be.");
+        return activityIndex > 0 && vehicleDependentActivityStatesDoublePresent.get((activityIndex * nuVehicleTypeKeys + vehicle.getVehicleTypeIdentifier().getIndex()) * activityStates[0].length + stateId.getIndex());
+    }
+
     <T> void putInternalTypedActivityState(TourActivity act, StateId stateId, T state) {
         activityStates[act.getIndex()][stateId.getIndex()] = state;
+        dirtyActivityStateRows.mark(act.getIndex());
     }
 
     <T> void putInternalTypedActivityState(TourActivity act, Vehicle vehicle, StateId stateId, T state) {
-        vehicleDependentActivityStates[act.getIndex()][vehicle.getVehicleTypeIdentifier().getIndex()][stateId.getIndex()] = state;
+        int activityIndex = act.getIndex();
+        int vehicleTypeIndex = vehicle.getVehicleTypeIdentifier().getIndex();
+        Object[] row = vehicleDependentActivityStates[activityIndex][vehicleTypeIndex];
+        row[stateId.getIndex()] = state;
+        int rowIndex = activityIndex * nuVehicleTypeKeys + vehicleTypeIndex;
+        if (!dirtyVehicleDependentActivityRows.get(rowIndex)) {
+            dirtyVehicleDependentActivityStateRows.add(row);
+            dirtyVehicleDependentActivityRows.set(rowIndex);
+        }
     }
 
     /**

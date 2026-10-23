@@ -43,6 +43,9 @@ public final class RuinWorst extends AbstractRuinStrategy {
 
     private VehicleRoutingProblem vrp;
 
+    /** Jobs of the problem by index. */
+    private final Job[] jobsByIndex;
+
     private NoiseMaker noiseMaker = () -> 0;
 
     public void setNoiseMaker(NoiseMaker noiseMaker) {
@@ -52,6 +55,14 @@ public final class RuinWorst extends AbstractRuinStrategy {
     public RuinWorst(VehicleRoutingProblem vrp, final int initialNumberJobsToRemove) {
         super(vrp);
         this.vrp = vrp;
+        int maxIndex = 0;
+        for (Job job : vrp.getJobs().values()) {
+            maxIndex = Math.max(maxIndex, job.getIndex());
+        }
+        jobsByIndex = new Job[maxIndex + 1];
+        for (Job job : vrp.getJobs().values()) {
+            jobsByIndex[job.getIndex()] = job;
+        }
         setRuinShareFactory(() -> initialNumberJobsToRemove);
         logger.debug("initialise {}", this);
     }
@@ -69,100 +80,133 @@ public final class RuinWorst extends AbstractRuinStrategy {
         return unassignedJobs;
     }
 
+    /**
+     * Removes the jobs with the highest savings one by one. The savings without noise (transport costs) of each
+     * activity are computed once per route, and after a removal only for the route it changed (only the neighbours of
+     * the removed job are affected): the previous version recomputed all routes for each removed job, which was
+     * quadratic on large problems. The noise is still drawn for every job before each removal, as before: drawing it
+     * once would make the ruin keep removing jobs from the route it just changed (the only one with new draws).
+     */
     private void ruin(Collection<VehicleRoute> vehicleRoutes, int nOfJobs2BeRemoved, List<Job> unassignedJobs) {
+        // Savings without noise of the first and second activity of each job, by job index (NaN: none).
+        double[] firstActivitySavings = new double[jobsByIndex.length];
+        double[] secondActivitySavings = new double[jobsByIndex.length];
+        Arrays.fill(firstActivitySavings, Double.NaN);
+        Arrays.fill(secondActivitySavings, Double.NaN);
+        VehicleRoute[] routeOfJob = new VehicleRoute[jobsByIndex.length];
+        for (VehicleRoute route : vehicleRoutes) {
+            calculateSavingsForRoute(route, firstActivitySavings, secondActivitySavings, routeOfJob);
+        }
+
         int toRemove = nOfJobs2BeRemoved;
         Set<Job> tabu = new HashSet<>();
         while (toRemove > 0) {
-            Job worst = getWorst(vehicleRoutes, tabu);
-            if (worst == null) break;
-            if (removeJob(worst, vehicleRoutes)) {
-                unassignedJobs.add(worst);
+            int worst = getWorst(firstActivitySavings, secondActivitySavings, routeOfJob, tabu);
+            if (worst < 0) break;
+            Job job = jobsByIndex[worst];
+            VehicleRoute route = routeOfJob[worst];
+            if (removeJob(job, route)) {
+                unassignedJobs.add(job);
+                firstActivitySavings[worst] = Double.NaN;
+                secondActivitySavings[worst] = Double.NaN;
+                routeOfJob[worst] = null;
+                calculateSavingsForRoute(route, firstActivitySavings, secondActivitySavings, routeOfJob);
             } else {
-                tabu.add(worst);
+                tabu.add(job);
             }
             toRemove--;
         }
     }
 
-    private Job getWorst(Collection<VehicleRoute> routes, Set<Job> tabu) {
-        if (routes.isEmpty()) return null;
-
-        Job worst = null;
+    /**
+     * Index of the job with the highest savings (the worst one to keep), -1 if none. Noise is drawn for each activity
+     * of each job, as in the full computation.
+     */
+    private int getWorst(double[] firstActivitySavings, double[] secondActivitySavings, VehicleRoute[] routeOfJob,
+                         Set<Job> tabu) {
+        int worst = -1;
         double bestSavings = Double.MIN_VALUE;
-        Map<Job, Double> savingsMap = new HashMap<>();
-
-        // Calculate savings for all jobs across all routes
-        for (VehicleRoute route : routes) {
-            if (route.isEmpty()) continue;
-
-            calculateSavingsForRoute(route, savingsMap);
+        for (int i = 0; i < routeOfJob.length; i++) {
+            if (routeOfJob[i] == null) continue;
+            double jobSavings = withNoise(firstActivitySavings[i]);
+            if (!Double.isNaN(secondActivitySavings[i])) {
+                jobSavings += withNoise(secondActivitySavings[i]);
+            }
+            if (!(jobSavings > bestSavings)) continue;
+            Job job = jobsByIndex[i];
+            if (tabu.contains(job) || !jobFilter.accept(job)) continue;
+            bestSavings = jobSavings;
+            worst = i;
         }
-
-        // If no jobs have been evaluated, return null
-        if (savingsMap.isEmpty()) return null;
-
-        // Find the job with highest savings (worst job to keep)
-        for (Map.Entry<Job, Double> entry : savingsMap.entrySet()) {
-            Job job = entry.getKey();
-            double savings = entry.getValue();
-
-            if (tabu.contains(job) || !vrp.getJobs().containsKey(job.getId())) {
-                continue;
-            }
-
-            // Skip jobs that don't pass the filter
-            if (!jobFilter.accept(job)) {
-                continue;
-            }
-
-            if (savings > bestSavings) {
-                bestSavings = savings;
-                worst = job;
-            }
-        }
-
         return worst;
     }
 
-    private void calculateSavingsForRoute(VehicleRoute route, Map<Job, Double> savingsMap) {
+    private double withNoise(double savings) {
+        return Math.max(0, savings + noiseMaker.makeNoise());
+    }
+
+    /**
+     * (Re)computes the savings without noise of the activities of the jobs of a route: what removing each of them
+     * saves in transport costs.
+     */
+    private void calculateSavingsForRoute(VehicleRoute route, double[] firstActivitySavings,
+                                          double[] secondActivitySavings, VehicleRoute[] routeOfJob) {
         if (route.isEmpty()) return;
+
+        for (TourActivity act : route.getActivities()) {
+            int index = problemJobIndex(act);
+            if (index >= 0) {
+                firstActivitySavings[index] = Double.NaN;
+                secondActivitySavings[index] = Double.NaN;
+                routeOfJob[index] = route;
+            }
+        }
 
         TourActivity actBefore = route.getStart();
         TourActivity actToEval = null;
-
         for (TourActivity act : route.getActivities()) {
             if (!(act instanceof TourActivity.JobActivity)) {
                 continue;
             }
-
-            if (actToEval == null) {
-                actToEval = act;
-                continue;
+            if (actToEval != null) {
+                setSavings(firstActivitySavings, secondActivitySavings, actToEval,
+                    savings(route, actBefore, actToEval, act));
+                actBefore = actToEval;
             }
-
-            double savings = savings(route, actBefore, actToEval, act);
-            Job job = ((TourActivity.JobActivity) actToEval).getJob();
-
-            // Add to savings map
-            savingsMap.merge(job, savings, Double::sum);
-
-            actBefore = actToEval;
             actToEval = act;
         }
-
-        // Process the last activity
         if (actToEval != null) {
-            double savings = savings(route, actBefore, actToEval, route.getEnd());
-            Job job = ((TourActivity.JobActivity) actToEval).getJob();
-
-            // Add to savings map
-            savingsMap.merge(job, savings, Double::sum);
+            setSavings(firstActivitySavings, secondActivitySavings, actToEval,
+                savings(route, actBefore, actToEval, route.getEnd()));
         }
     }
 
+    private void setSavings(double[] firstActivitySavings, double[] secondActivitySavings, TourActivity act,
+                            double activitySavings) {
+        int index = problemJobIndex(act);
+        if (index < 0) return;
+        if (Double.isNaN(firstActivitySavings[index])) {
+            firstActivitySavings[index] = activitySavings;
+        } else {
+            secondActivitySavings[index] = activitySavings;
+        }
+    }
+
+    /**
+     * Index of the job of an activity if it is a job of the problem (not an initial job), -1 otherwise.
+     */
+    private int problemJobIndex(TourActivity act) {
+        if (!(act instanceof TourActivity.JobActivity)) return -1;
+        Job job = ((TourActivity.JobActivity) act).getJob();
+        int index = job.getIndex();
+        return index >= 0 && index < jobsByIndex.length && jobsByIndex[index] == job ? index : -1;
+    }
+
+    /**
+     * Transport costs saved by removing actToEval (without noise).
+     */
     private double savings(VehicleRoute route, TourActivity actBefore, TourActivity actToEval, TourActivity act) {
-        double savings = c(actBefore, actToEval, route.getVehicle()) + c(actToEval, act, route.getVehicle()) - c(actBefore, act, route.getVehicle());
-        return Math.max(0, savings + noiseMaker.makeNoise());
+        return c(actBefore, actToEval, route.getVehicle()) + c(actToEval, act, route.getVehicle()) - c(actBefore, act, route.getVehicle());
     }
 
     private double c(TourActivity from, TourActivity to, Vehicle vehicle) {

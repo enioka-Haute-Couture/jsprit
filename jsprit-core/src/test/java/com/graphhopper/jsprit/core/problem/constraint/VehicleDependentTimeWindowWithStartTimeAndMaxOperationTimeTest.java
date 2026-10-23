@@ -121,19 +121,19 @@ class VehicleDependentTimeWindowWithStartTimeAndMaxOperationTimeTest {
     @Test
     @DisplayName("State Manager Should Have Memorized Correct Latest End Of Act 3")
     void stateManagerShouldHaveMemorizedCorrectLatestEndOfAct3() {
-        assertEquals(70., stateManager.getActivityState(route.getActivities().get(2), vehicle, InternalStates.LATEST_OPERATION_START_TIME, Double.class), 0.01);
+        assertEquals(70., stateManager.getActivityStateDouble(route.getActivities().get(2), vehicle, InternalStates.LATEST_OPERATION_START_TIME, Double.NaN), 0.01);
     }
 
     @Test
     @DisplayName("State Manager Should Have Memorized Correct Latest End Of Act 2")
     void stateManagerShouldHaveMemorizedCorrectLatestEndOfAct2() {
-        assertEquals(60., stateManager.getActivityState(route.getActivities().get(1), vehicle, InternalStates.LATEST_OPERATION_START_TIME, Double.class), 0.01);
+        assertEquals(60., stateManager.getActivityStateDouble(route.getActivities().get(1), vehicle, InternalStates.LATEST_OPERATION_START_TIME, Double.NaN), 0.01);
     }
 
     @Test
     @DisplayName("State Manager Should Have Memorized Correct Latest End Of Act 1")
     void stateManagerShouldHaveMemorizedCorrectLatestEndOfAct1() {
-        assertEquals(50., stateManager.getActivityState(route.getActivities().get(0), vehicle, InternalStates.LATEST_OPERATION_START_TIME, Double.class), 0.01);
+        assertEquals(50., stateManager.getActivityStateDouble(route.getActivities().get(0), vehicle, InternalStates.LATEST_OPERATION_START_TIME, Double.NaN), 0.01);
     }
 
     @Test
